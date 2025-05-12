@@ -99,13 +99,13 @@ const DashboardHome = () => {
           <div className="bg-white rounded-lg shadow mb-6 p-4">
             <div className="flex items-center space-x-4">
               <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
-                {user?.firstname?.[0]}{user?.lastname?.[0]}
+                {user?.first_name?.[0]}{user?.last_name?.[0]}
               </div>
               <div 
                 className="w-full bg-gray-100 hover:bg-gray-200 rounded-full px-4 py-2.5 text-gray-500 cursor-pointer transition-colors"
                 onClick={openCreatePost}
               >
-                Quoi de neuf, {user?.firstname || 'utilisateur'} ?
+                Quoi de neuf, {user?.first_name || 'utilisateur'} ?
               </div>
             </div>
             

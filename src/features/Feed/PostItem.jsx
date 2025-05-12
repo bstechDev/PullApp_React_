@@ -1,9 +1,10 @@
 // src/features/Feed/PostItem.jsx
-import React, { useState } from 'react';
-// import { useAuth } from '../../hooks/useAuth';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../features/auth/contexts/AuthContext';
 import Button from '../auth/components/Button';
 import { deletePost, updatePost } from './feedService';
+import CommentsList from './CommentsList';
+import CreateCommentForm from './CreateCommentForm';
 
 // Fonction pour formater la date
 const formatDate = (dateString) => {
@@ -36,6 +37,9 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [imageError, setImageError] = useState(false);
+  // Nouvelles variables d'état pour les commentaires
+  const [newComment, setNewComment] = useState(null);
+  const [commentsCount, setCommentsCount] = useState(0);
 
   // Validation checks after hooks
   if (!post) {
@@ -51,13 +55,16 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
     return null;
   }
 
-  // Set initial content after validation
+  // Set initial content and comments count after validation
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  React.useEffect(() => {
+  useEffect(() => {
     if (postData?.content) {
       setEditContent(postData.content);
     }
-  }, [postData?.content]);
+    if (postData?.comments_count !== undefined) {
+      setCommentsCount(postData.comments_count);
+    }
+  }, [postData?.content, postData?.comments_count]);
 
   const isAuthor = user?.id === postData.user_id;
   
@@ -124,6 +131,66 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
     // Ici vous pourriez ajouter l'appel API pour liker le post
   };
   
+  // Fonction pour gérer la création d'un nouveau commentaire
+  const handleCommentCreated = (comment) => {
+    setNewComment(comment);
+    
+    // Utiliser une fonction pour accéder au dernier état
+    setCommentsCount(prevCount => {
+      const newCount = prevCount + 1;
+      
+      // Mettre à jour le compteur de commentaires dans le post
+      const updatedPost = {
+        ...postData,
+        comments_count: newCount
+      };
+      
+      if (onPostUpdated) {
+        onPostUpdated(updatedPost);
+      }
+      
+      return newCount;
+    });
+  };
+  
+  // Fonction pour gérer la suppression d'un commentaire
+  const handleCommentDeleted = () => {
+    if (commentsCount > 0) {
+      setCommentsCount(prevCount => prevCount - 1);
+      
+      // Mettre à jour le compteur de commentaires dans le post
+      const updatedPost = {
+        ...postData,
+        comments_count: commentsCount - 1
+      };
+      
+      if (onPostUpdated) {
+        onPostUpdated(updatedPost);
+      }
+    }
+  };
+
+  // Fonction pour mettre à jour le nombre de commentaires
+  const handleCommentsCountChange = (count) => {
+    // Éviter les mises à jour d'état inutiles
+    if (count !== commentsCount) {
+      // Utilisez setTimeout pour déplacer la mise à jour en dehors du cycle de rendu actuel
+      setTimeout(() => {
+        setCommentsCount(count);
+        
+        // Mettre à jour le compteur de commentaires dans le post
+        const updatedPost = {
+          ...postData,
+          comments_count: count
+        };
+        
+        if (onPostUpdated) {
+          onPostUpdated(updatedPost);
+        }
+      }, 0);
+    }
+  };
+  
   return (
     <div className="bg-white rounded-lg shadow mb-4 overflow-hidden">
       {/* En-tête du post */}
@@ -132,7 +199,7 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
           {/* Avatar */}
           <div className="flex-shrink-0">
             <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
-              {postData.user?.firstname?.[0] || '?'}{postData.user?.lastname?.[0] || '?'}
+              {postData.user?.first_name?.[0] || '?'}{postData.user?.last_name?.[0] || '?'}
             </div>
           </div>
           
@@ -141,7 +208,7 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-900">
-                  {postData.user?.firstname || 'Utilisateur'} {postData.user?.lastname || ''}
+                  {postData.user?.first_name || 'Utilisateur'} {postData.user?.last_name || ''}
                 </p>
                 <p className="text-xs text-gray-500">
                   {postData.created_at ? formatDate(postData.created_at) : 'Date inconnue'}
@@ -235,7 +302,7 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
               {postData.content}
             </div>
             
-            {/* Affichage de l'image si elle existe - PARTIE MODIFIÉE */}
+            {/* Affichage de l'image si elle existe */}
             {postData.image_path && !imageError && (
               <div className="mt-3">
                 <div className="rounded-lg overflow-hidden bg-gray-50">
@@ -322,7 +389,7 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
               className="hover:underline"
               onClick={() => setShowComments(!showComments)}
             >
-              {postData.comments_count || 0} commentaires
+              {commentsCount || 0} commentaires
             </button>
           </div>
           
@@ -356,54 +423,24 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
             </button>
           </div>
           
-          {/* Section commentaires */}
+          {/* Section commentaires - Nouvelle implémentation */}
           {showComments && (
             <div className="px-4 py-3 border-t border-gray-100">
-              <div className="flex items-start space-x-3 mb-4">
-                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium text-xs">
-                  {user?.firstname?.[0]}{user?.lastname?.[0]}
-                </div>
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    className="w-full bg-gray-100 rounded-full px-4 py-2 text-sm text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Écrivez un commentaire..."
-                  />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                    <button className="text-gray-400 hover:text-gray-600">
-                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
+              {/* Formulaire pour ajouter un commentaire */}
+              <CreateCommentForm 
+                postId={postData.id} 
+                onCommentCreated={handleCommentCreated} 
+              />
               
-              {/* Liste des commentaires (si disponible) */}
-              {postData.comments && postData.comments.length > 0 ? (
-                <div className="space-y-3">
-                  {postData.comments.map(comment => (
-                    <div key={comment.id} className="flex items-start space-x-3">
-                      <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium text-xs">
-                        {comment.user?.firstname?.[0]}{comment.user?.lastname?.[0]}
-                      </div>
-                      <div className="flex-1">
-                        <div className="bg-gray-100 rounded-lg px-4 py-2">
-                          <p className="text-sm font-medium text-gray-900">{comment.user?.firstname} {comment.user?.lastname}</p>
-                          <p className="text-sm text-gray-800">{comment.content}</p>
-                        </div>
-                        <div className="flex items-center mt-1 space-x-3 text-xs text-gray-500">
-                          <button className="font-medium">J'aime</button>
-                          <button className="font-medium">Répondre</button>
-                          <span>{formatDate(comment.created_at)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 text-center">Aucun commentaire pour le moment.</p>
-              )}
+              {/* Liste des commentaires */}
+              <div className="mt-4">
+                <CommentsList 
+                  postId={postData.id} 
+                  newComment={newComment}
+                  onCommentDelete={handleCommentDeleted}
+                  onCommentsCountChange={handleCommentsCountChange}
+                />
+              </div>
             </div>
           )}
         </>

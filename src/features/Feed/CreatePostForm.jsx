@@ -73,76 +73,61 @@ const CreatePostForm = ({ onPostCreated, onCancel, isVisible = false }) => {
     }
   };
   
-  // Dans src/features/Feed/CreatePostForm.jsx, modifiez la fonction handleSubmit:
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!content.trim() && !selectedImage) {
-    setError('Veuillez ajouter du texte ou une image');
-    return;
-  }
-  
-  setLoading(true);
-  setError('');
-  
-  try {
-    // Créer un nouveau FormData (important de le créer à chaque fois)
-    const formData = new FormData();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
-    // Ajouter le contenu du post
-    formData.append('content', content);
+    if (!content.trim() && !selectedImage) {
+      setError('Veuillez ajouter du texte ou une image');
+      return;
+    }
     
-    // Vérifier si l'image est bien un fichier File
-    if (selectedImage && selectedImage instanceof File) {
-      // Vérifier la taille de l'image (max 5MB)
-      if (selectedImage.size > 5 * 1024 * 1024) {
-        throw new Error('L\'image est trop volumineuse (max 5MB)');
+    setLoading(true);
+    setError('');
+    
+    try {
+      // Créer un FormData pour envoyer à la fois le texte et l'image
+      const formData = new FormData();
+      formData.append('content', content);
+      
+      // Gestion de l'image
+      if (selectedImage) {
+        formData.append('image', selectedImage);
+        console.log('Image ajoutée au FormData:', 
+          selectedImage.name, 
+          selectedImage.type, 
+          `${Math.round(selectedImage.size / 1024)} KB`);
       }
       
-      // Ajouter l'image au FormData
-      formData.append('image', selectedImage, selectedImage.name);
+      // Afficher ce qui est envoyé dans le FormData (pour debug)
+      console.log('FormData envoyé:', [...formData.entries()].map(entry => ({
+        field: entry[0],
+        value: entry[1] instanceof File ? `File: ${entry[1].name}` : entry[1]
+      })));
       
-      console.log('Image ajoutée au FormData:', 
-        selectedImage.name, 
-        selectedImage.type, 
-        `${Math.round(selectedImage.size / 1024)} KB`);
+      const response = await createPost(formData);
+      console.log('Réponse complète de création de post:', response);
+      
+      // Extraire le post de la réponse
+      const createdPost = response.data.post || response.data;
+      console.log('Post créé:', createdPost);
+      console.log('Image path dans la réponse:', createdPost.image_path);
+      
+      setContent('');
+      setSelectedImage(null);
+      
+      if (onPostCreated) {
+        onPostCreated(createdPost);
+      }
+    } catch (err) {
+      console.error('Error creating post:', err);
+      setError(
+        err.response?.data?.message || 
+        'Une erreur est survenue lors de la création du post.'
+      );
+    } finally {
+      setLoading(false);
     }
-    
-    // Déboguer le contenu du FormData
-    console.log('FormData contenu:');
-    for (let pair of formData.entries()) {
-      console.log(pair[0] + ': ' + (pair[1] instanceof File ? 
-        `Fichier: ${pair[1].name} (${pair[1].type}, ${Math.round(pair[1].size / 1024)} KB)` : 
-        pair[1]));
-    }
-    
-    // Envoyer la requête
-    const response = await createPost(formData);
-    console.log('Réponse complète de création de post:', response);
-    
-    // Extraire le post de la réponse
-    const createdPost = response.data.post || response.data;
-    console.log('Post créé:', createdPost);
-    
-    // Réinitialiser le formulaire
-    setContent('');
-    setSelectedImage(null);
-    
-    // Callback pour informer le parent
-    if (onPostCreated) {
-      onPostCreated(createdPost);
-    }
-  } catch (err) {
-    console.error('Error creating post:', err);
-    setError(
-      err.message || err.response?.data?.message || 
-      'Une erreur est survenue lors de la création du post.'
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+  };
   
   // Si le formulaire n'est pas visible, ne rien afficher
   if (!isVisible) {
@@ -171,12 +156,12 @@ const handleSubmit = async (e) => {
         <div className="mb-6 flex items-center">
           <div className="flex-shrink-0">
             <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-lg shadow-sm">
-              {user?.firstname?.[0] || '?'}{user?.lastname?.[0] || '?'}
+              {user?.first_name?.[0] || '?'}{user?.last_name?.[0] || '?'}
             </div>
           </div>
           <div className="ml-3">
             <p className="font-medium text-gray-900">
-              {user?.firstname || 'Utilisateur'} {user?.lastname || ''}
+              {user?.first_name || 'Utilisateur'} {user?.last_name || ''}
             </p>
             <div className="flex items-center mt-1">
               <button 
