@@ -1,4 +1,3 @@
-// src/features/Feed/CommentsList.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { getPostComments } from './commentService';
 import CommentItem from './CommentItem';
@@ -7,42 +6,33 @@ const CommentsList = ({ postId, newComment, onCommentUpdate, onCommentDelete, on
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Chargement initial des commentaires
   useEffect(() => {
     if (postId) {
       fetchComments();
     }
-  }, [postId]);
+  }, [postId, refreshTrigger]);
 
-  // Ajouter un nouveau commentaire à la liste - version corrigée
   useEffect(() => {
     if (newComment && newComment.post_id === postId) {
-      // S'assurer que le nouveau commentaire a un ID valide
-      const processedComment = newComment.id ? 
-        newComment : 
-        {...newComment, id: `new-${Date.now()}`};
-        
+      console.log('Nouveau commentaire reçu:', newComment);
+      
       setComments(prevComments => {
-        // Vérifier si le commentaire existe déjà pour éviter les doublons
-        const commentExists = prevComments.some(
-          comment => comment.id === processedComment.id || 
-                     (comment.content === processedComment.content && 
-                      comment.user_id === processedComment.user_id)
-        );
-        
-        if (commentExists) {
-          return prevComments; // Ne pas ajouter de doublon
+        const exists = prevComments.some(comment => comment.id === newComment.id);
+        if (exists) {
+          console.log('Commentaire déjà existant, pas d\'ajout:', newComment);
+          return prevComments;
         }
         
-        const updatedComments = [processedComment, ...prevComments];
+        const updatedComments = [newComment, ...prevComments].sort((a, b) => 
+          new Date(b.created_at) - new Date(a.created_at)
+        );
         
-        // Mettre à jour le compteur APRÈS avoir mis à jour les commentaires
-        // mais en dehors du cycle de rendu avec setTimeout
-        if (onCommentsCountChange) {
-          const countToUpdate = updatedComments.length;
+        // Appeler onCommentsCountChange uniquement si le nombre de commentaires change
+        if (onCommentsCountChange && updatedComments.length !== prevComments.length) {
           setTimeout(() => {
-            onCommentsCountChange(countToUpdate);
+            onCommentsCountChange(updatedComments.length);
           }, 0);
         }
         
@@ -51,61 +41,29 @@ const CommentsList = ({ postId, newComment, onCommentUpdate, onCommentDelete, on
     }
   }, [newComment, postId, onCommentsCountChange]);
 
-  // Organiser les commentaires par parent/enfant
-  const organizeComments = useCallback((commentsArray) => {
-    const parentComments = [];
-    const repliesMap = {};
-    
-    // Classer les commentaires
-    commentsArray.forEach(comment => {
-      if (!comment.parent_id) {
-        // C'est un commentaire parent
-        parentComments.push({...comment});
-      } else {
-        // C'est une réponse
-        if (!repliesMap[comment.parent_id]) {
-          repliesMap[comment.parent_id] = [];
-        }
-        repliesMap[comment.parent_id].push({...comment});
-      }
-    });
-    
-    return { parentComments, repliesMap };
-  }, []);
-
   const fetchComments = async () => {
     setLoading(true);
     setError('');
-
+    
     try {
+      console.log(`Chargement des commentaires pour le post ${postId}...`);
       const response = await getPostComments(postId);
       const commentsData = response.data || [];
       
-      // Traitement des commentaires pour garantir des IDs valides
-      const processedComments = commentsData.map(comment => {
-        if (!comment.id) {
-          const idBase = `${comment.post_id || postId}-${comment.user_id || 'user'}-${Date.now()}`;
-          return {...comment, id: idBase};
-        }
-        return comment;
-      });
+      const sortedComments = commentsData.sort((a, b) => 
+        new Date(b.created_at) - new Date(a.created_at)
+      );
       
-      // Trier les commentaires (les plus récents d'abord)
-      const sortedComments = processedComments.sort((a, b) => {
-        return new Date(b.created_at) - new Date(a.created_at);
-      });
-      
+      console.log('Commentaires reçus:', sortedComments);
       setComments(sortedComments);
       
-      // Mettre à jour le compteur en dehors du cycle de rendu
       if (onCommentsCountChange) {
-        const countToUpdate = processedComments.length;
         setTimeout(() => {
-          onCommentsCountChange(countToUpdate);
+          onCommentsCountChange(sortedComments.length);
         }, 0);
       }
     } catch (err) {
-      console.error('Error fetching comments:', err);
+      console.error('Erreur lors du chargement des commentaires:', err);
       setError('Impossible de charger les commentaires');
     } finally {
       setLoading(false);
@@ -113,6 +71,8 @@ const CommentsList = ({ postId, newComment, onCommentUpdate, onCommentDelete, on
   };
 
   const handleCommentUpdated = useCallback((updatedComment) => {
+    console.log('Mise à jour du commentaire:', updatedComment);
+    
     setComments(prevComments => 
       prevComments.map(comment => 
         comment.id === updatedComment.id ? updatedComment : comment
@@ -125,46 +85,56 @@ const CommentsList = ({ postId, newComment, onCommentUpdate, onCommentDelete, on
   }, [onCommentUpdate]);
 
   const handleCommentDeleted = useCallback((commentId) => {
-    // Traiter la suppression à l'intérieur d'une seule mise à jour
+    console.log('Suppression du commentaire:', commentId);
+    
     setComments(prevComments => {
-      // Compter combien de commentaires vont être supprimés (le commentaire + ses réponses)
-      const replies = prevComments.filter(c => c.parent_id === commentId);
-      const totalDeleted = 1 + replies.length; // Le commentaire + ses réponses
-      
-      // Supprimer le commentaire et ses réponses
-      const newComments = prevComments.filter(comment => 
+      const updatedComments = prevComments.filter(comment => 
         comment.id !== commentId && comment.parent_id !== commentId
       );
       
-      // Mettre à jour le compteur en dehors du cycle de rendu
-      if (onCommentDelete) {
-        setTimeout(() => {
-          onCommentDelete(commentId, totalDeleted);
-        }, 0);
-      }
-      
-      return newComments;
-    });
-  }, [onCommentDelete]);
-
-  // Fonction pour gérer l'ajout d'une réponse
-  const handleReplyAdded = useCallback((reply) => {
-    setComments(prevComments => {
-      const newComments = [...prevComments, reply];
-      
-      // Mettre à jour le compteur en dehors du cycle de rendu
       if (onCommentsCountChange) {
-        const countToUpdate = newComments.length;
         setTimeout(() => {
-          onCommentsCountChange(countToUpdate);
+          onCommentsCountChange(updatedComments.length);
         }, 0);
       }
       
-      return newComments;
+      if (onCommentDelete) {
+        onCommentDelete(commentId);
+      }
+      
+      return updatedComments;
+    });
+  }, [onCommentDelete, onCommentsCountChange]);
+
+  const handleReplyAdded = useCallback((reply) => {
+    console.log('Réponse ajoutée:', reply);
+    
+    setComments(prevComments => {
+      const exists = prevComments.some(comment => comment.id === reply.id);
+      if (exists) {
+        return prevComments;
+      }
+      
+      const updatedComments = [...prevComments, reply].sort((a, b) => 
+        new Date(b.created_at) - new Date(a.created_at)
+      );
+      
+      if (onCommentsCountChange) {
+        setTimeout(() => {
+          onCommentsCountChange(updatedComments.length);
+        }, 0);
+      }
+      
+      return updatedComments;
     });
   }, [onCommentsCountChange]);
 
-  if (loading) {
+  const handleForceRefresh = useCallback(() => {
+    console.log('Rechargement forcé des commentaires');
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  if (loading && comments.length === 0) {
     return (
       <div className="py-2 text-center">
         <div className="inline-block animate-pulse h-5 w-5 rounded-full bg-blue-200"></div>
@@ -179,7 +149,7 @@ const CommentsList = ({ postId, newComment, onCommentUpdate, onCommentDelete, on
         <p className="text-sm text-red-500">{error}</p>
         <button 
           className="text-sm text-blue-500 hover:underline mt-1"
-          onClick={fetchComments}
+          onClick={handleForceRefresh}
         >
           Réessayer
         </button>
@@ -195,31 +165,30 @@ const CommentsList = ({ postId, newComment, onCommentUpdate, onCommentDelete, on
     );
   }
 
-  // Organiser les commentaires
+  const organizeComments = (commentsArray) => {
+    const parentComments = [];
+    const repliesMap = {};
+    
+    commentsArray.forEach(comment => {
+      if (!comment.parent_id) {
+        parentComments.push({...comment});
+      } else {
+        if (!repliesMap[comment.parent_id]) {
+          repliesMap[comment.parent_id] = [];
+        }
+        repliesMap[comment.parent_id].push({...comment});
+      }
+    });
+    
+    return { parentComments, repliesMap };
+  };
+
   const { parentComments, repliesMap } = organizeComments(comments);
 
   return (
     <div className="space-y-4 py-2">
-      {parentComments.map((comment, index) => {
+      {parentComments.map((comment) => {
         const commentReplies = repliesMap[comment.id] || [];
-        
-        // Vérifier si le commentaire a un ID valide
-        if (!comment || !comment.id) {
-          const tempId = `temp-${postId}-${index}-${Date.now()}`;
-          console.log(`Commentaire #${index} sans ID généré avec ID temporaire:`, tempId);
-          
-          return (
-            <CommentItem 
-              key={tempId}
-              comment={{...comment, id: tempId}} 
-              postId={postId}
-              onCommentUpdated={handleCommentUpdated}
-              onCommentDeleted={handleCommentDeleted}
-              onReplyAdded={handleReplyAdded}
-              replies={[]}
-            />
-          );
-        }
         
         return (
           <CommentItem 
@@ -233,6 +202,15 @@ const CommentsList = ({ postId, newComment, onCommentUpdate, onCommentDelete, on
           />
         );
       })}
+      
+      <div className="text-center mt-4">
+        <button 
+          onClick={handleForceRefresh}
+          className="text-xs text-blue-500 hover:underline"
+        >
+          Actualiser les commentaires
+        </button>
+      </div>
     </div>
   );
 };

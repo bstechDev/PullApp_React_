@@ -1,4 +1,3 @@
-// src/features/Feed/CreateCommentForm.jsx
 import React, { useState } from 'react';
 import { useAuth } from '../auth/contexts/AuthContext';
 import { createComment } from './commentService';
@@ -26,26 +25,16 @@ const CreateCommentForm = ({ postId, onCommentCreated }) => {
       };
       
       const response = await createComment(postId, commentData);
+      const commentObject = response.data.comment || response.data;
       
-      // S'assurer que l'ID est bien celui retourné par le serveur
-      const commentId = response.data.id;
-      
-      if (!commentId) {
-        console.error('Aucun ID de commentaire retourné par le serveur:', response.data);
-        throw new Error('Aucun ID de commentaire retourné par le serveur');
+      if (!commentObject.id) {
+        throw new Error('Aucun ID retourné par le serveur');
       }
       
-      console.log('ID du commentaire créé:', commentId);
-      
-      // Créer un objet commentaire complet pour l'affichage
       const newComment = {
-        id: commentId, // Utiliser l'ID retourné par le serveur, pas un ID temporaire
-        content: commentData.content,
-        user_id: user.id,
+        ...commentObject,
         post_id: postId,
         parent_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
         user: {
           id: user.id,
           first_name: user.first_name,
@@ -54,15 +43,17 @@ const CreateCommentForm = ({ postId, onCommentCreated }) => {
         }
       };
       
-      setContent('');
-      
+      console.log('Commentaire créé:', newComment);
       if (onCommentCreated) {
         onCommentCreated(newComment);
       }
+      
+      setContent('');
     } catch (err) {
-      console.error('Error creating comment:', err);
+      console.error('Erreur lors de la création du commentaire:', err);
       setError(
         err.response?.data?.message || 
+        err.message ||
         'Une erreur est survenue lors de la création du commentaire.'
       );
     } finally {
@@ -82,11 +73,12 @@ const CreateCommentForm = ({ postId, onCommentCreated }) => {
           placeholder="Écrivez un commentaire..."
           value={content}
           onChange={(e) => setContent(e.target.value)}
+          disabled={loading}
         />
         <div className="absolute inset-y-0 right-0 flex items-center pr-3">
           <button 
             type="submit"
-            className="text-blue-500 hover:text-blue-700 focus:outline-none"
+            className={`focus:outline-none ${loading || !content.trim() ? 'text-gray-400' : 'text-blue-500 hover:text-blue-700'}`}
             disabled={loading || !content.trim()}
           >
             {loading ? (
@@ -104,7 +96,7 @@ const CreateCommentForm = ({ postId, onCommentCreated }) => {
       </div>
       
       {error && (
-        <div className="text-red-500 text-xs mt-1">
+        <div className="text-red-500 text-xs absolute -bottom-5 left-12">
           {error}
         </div>
       )}

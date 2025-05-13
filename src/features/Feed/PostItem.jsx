@@ -132,12 +132,24 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   };
   
   // Fonction pour gérer la création d'un nouveau commentaire
-  const handleCommentCreated = (comment) => {
-    setNewComment(comment);
+
+  const handleCommentCreated = (comment, tempId = null) => {
+    console.log("PostItem reçoit le commentaire:", comment, "tempId:", tempId);
     
-    // Utiliser une fonction pour accéder au dernier état
+    // Si on reçoit un tempId, c'est une mise à jour d'un commentaire temporaire
+    if (tempId) {
+      // Ne rien faire ici, CommentsList s'occupera de remplacer le commentaire temporaire
+      console.log("Mise à jour du commentaire temporaire:", tempId, "avec:", comment);
+    } else {
+      // C'est un nouveau commentaire, l'ajouter à la liste
+      console.log("Nouveau commentaire ajouté:", comment);
+      setNewComment(comment);
+    }
+    
+    // Mettre à jour le compteur de commentaires
     setCommentsCount(prevCount => {
-      const newCount = prevCount + 1;
+      // Ne pas incrémenter si c'est une mise à jour (tempId existe)
+      const newCount = tempId ? prevCount : prevCount + 1;
       
       // Mettre à jour le compteur de commentaires dans le post
       const updatedPost = {

@@ -1,4 +1,3 @@
-// src/features/Feed/FeedList.jsx - Version modifiée
 import React, { useState, useEffect } from 'react';
 import PostItem from './PostItem';
 import { getAllPosts } from './feedService';
@@ -9,19 +8,15 @@ const FeedList = ({ newPost, onPostUpdate, onPostDelete }) => {
   const [error, setError] = useState('');
   const [debugInfo, setDebugInfo] = useState(null);
   
-  // Charger tous les posts au chargement du composant
   useEffect(() => {
     console.log("FeedList monté, chargement des posts");
     fetchPosts();
   }, []);
   
-  // Ajouter un nouveau post au début de la liste quand un nouveau post est créé
   useEffect(() => {
     if (newPost) {
       console.log("Nouveau post reçu dans FeedList:", newPost);
-      // S'assurer que le post n'est pas déjà dans la liste
       setPosts(currentPosts => {
-        // Vérifier si le post existe déjà (par ID)
         const postId = newPost.id || newPost.post?.id;
         const exists = currentPosts.some(p => {
           const pId = p.id || p.post?.id;
@@ -33,7 +28,6 @@ const FeedList = ({ newPost, onPostUpdate, onPostDelete }) => {
           return currentPosts;
         }
         
-        // Ajouter le nouveau post au début
         return [newPost, ...currentPosts];
       });
     }
@@ -47,7 +41,6 @@ const FeedList = ({ newPost, onPostUpdate, onPostDelete }) => {
       const response = await getAllPosts();
       console.log('Réponse API getAllPosts:', response);
       
-      // Sauvegarde pour debug
       setDebugInfo({
         responseReceived: true,
         responseData: response.data,
@@ -56,16 +49,13 @@ const FeedList = ({ newPost, onPostUpdate, onPostDelete }) => {
         hasDataProperty: response.data && response.data.data ? true : false
       });
       
-      // Déterminer où se trouvent les données des posts dans la réponse
       let postsData = [];
       
       if (Array.isArray(response.data)) {
         postsData = response.data;
       } else if (response.data && Array.isArray(response.data.data)) {
-        // Si la réponse est enveloppée dans un objet avec une propriété "data"
         postsData = response.data.data;
       } else if (response.data && typeof response.data === 'object') {
-        // Essayer d'extraire les posts si la réponse est un objet
         const postsArray = [];
         for (const key in response.data) {
           if (response.data[key] && typeof response.data[key] === 'object' && response.data[key].id) {
@@ -77,7 +67,6 @@ const FeedList = ({ newPost, onPostUpdate, onPostDelete }) => {
       
       console.log('Posts extraits:', postsData);
       
-      // Vérifier si postsData est vide
       if (!postsData || postsData.length === 0) {
         console.log("Aucun post trouvé dans la réponse API");
         setError("Aucun post n'a été trouvé dans la réponse de l'API.");
@@ -86,7 +75,6 @@ const FeedList = ({ newPost, onPostUpdate, onPostDelete }) => {
         return;
       }
       
-      // Trier les posts par date (les plus récents d'abord)
       const sortedPosts = Array.isArray(postsData) ? postsData.sort((a, b) => {
         const dateA = new Date(a.created_at || 0);
         const dateB = new Date(b.created_at || 0);
@@ -110,18 +98,19 @@ const FeedList = ({ newPost, onPostUpdate, onPostDelete }) => {
   
   const handlePostUpdated = (updatedPost) => {
     console.log("Post mis à jour:", updatedPost);
-    setPosts(currentPosts => 
-      currentPosts.map(post => {
-        // Identifier le post à mettre à jour, qu'il soit direct ou encapsulé
-        const postId = post.id || post.post?.id;
-        const updatedId = updatedPost.id || updatedPost.post?.id;
-        
-        if (postId === updatedId) {
-          return updatedPost;
+    setPosts(currentPosts => {
+      const postId = updatedPost.id || updatedPost.post?.id;
+      return currentPosts.map(post => {
+        const currentPostId = post.id || post.post?.id;
+        if (currentPostId === postId) {
+          // Vérifier si le post a réellement changé pour éviter les re-rendus inutiles
+          if (JSON.stringify(post) !== JSON.stringify(updatedPost)) {
+            return updatedPost;
+          }
         }
         return post;
-      })
-    );
+      });
+    });
     
     if (onPostUpdate) {
       onPostUpdate(updatedPost);
@@ -132,7 +121,6 @@ const FeedList = ({ newPost, onPostUpdate, onPostDelete }) => {
     console.log("Post supprimé:", postId);
     setPosts(currentPosts => 
       currentPosts.filter(post => {
-        // Identifier le post à supprimer, qu'il soit direct ou encapsulé
         const id = post.id || post.post?.id;
         return id !== postId;
       })
@@ -177,7 +165,6 @@ const FeedList = ({ newPost, onPostUpdate, onPostDelete }) => {
           </div>
         </div>
         
-        {/* Informations de débogage (à montrer uniquement pendant le développement) */}
         {debugInfo && (
           <div className="mt-4 p-3 bg-gray-100 rounded text-xs font-mono overflow-auto">
             <details>
@@ -197,7 +184,6 @@ const FeedList = ({ newPost, onPostUpdate, onPostDelete }) => {
           Aucun post pour le moment. Soyez le premier à publier quelque chose !
         </p>
         
-        {/* Informations de débogage (à montrer uniquement pendant le développement) */}
         {debugInfo && (
           <div className="mt-4 p-3 bg-gray-100 rounded text-xs font-mono overflow-auto">
             <details>
@@ -213,7 +199,6 @@ const FeedList = ({ newPost, onPostUpdate, onPostDelete }) => {
   return (
     <div>
       {posts.map(post => {
-        // Extraire l'ID du post, qu'il soit directement dans post ou dans post.post
         const postId = post.id || post.post?.id;
         
         if (!postId) {

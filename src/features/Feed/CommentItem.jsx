@@ -1,4 +1,3 @@
-// src/features/Feed/CommentItem.jsx
 import React, { useState, useCallback } from 'react';
 import { useAuth } from '../../features/auth/contexts/AuthContext';
 import { updateComment, deleteComment, replyToComment } from './commentService';
@@ -19,18 +18,11 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
   const [error, setError] = useState('');
   const [showReplies, setShowReplies] = useState(false);
 
-  // Vérification améliorée pour déterminer si l'utilisateur est l'auteur
+  // Vérification pour déterminer si l'utilisateur est l'auteur
   const isAuthor = user && comment.user_id && 
     (user.id === comment.user_id || 
      user.id === parseInt(comment.user_id) || 
      parseInt(user.id) === comment.user_id);
-  
-  // Log de débogage pour comprendre la comparaison d'auteur
-  console.log('Comparaison d\'auteur:', { 
-    'commentUserId': comment.user_id, 
-    'currentUserId': user?.id, 
-    'isMatch': isAuthor
-  });
 
   // Gestion de l'édition du commentaire
   const handleEdit = useCallback(() => {
@@ -53,24 +45,21 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
     setError('');
 
     try {
-      await updateComment(postId, comment.id, { content: editContent });
+      const response = await updateComment(postId, comment.id, { content: editContent });
+      const updatedComment = {
+        ...comment,
+        content: editContent,
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('Commentaire mis à jour:', response.data);
       setIsEditing(false);
       
       if (onCommentUpdated) {
-        // Créer un objet commentaire mis à jour
-        const updatedComment = {
-          ...comment,
-          content: editContent,
-          updated_at: new Date().toISOString()
-        };
-        
-        // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
-        setTimeout(() => {
-          onCommentUpdated(updatedComment);
-        }, 0);
+        onCommentUpdated(updatedComment);
       }
     } catch (err) {
-      console.error('Error updating comment:', err);
+      console.error('Erreur lors de la mise à jour du commentaire:', err);
       setError(
         err.response?.data?.message || 
         'Une erreur est survenue lors de la mise à jour du commentaire.'
@@ -92,14 +81,14 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
       await deleteComment(postId, comment.id);
       
       if (onCommentDeleted) {
-        // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
-        setTimeout(() => {
-          onCommentDeleted(comment.id);
-        }, 0);
+        onCommentDeleted(comment.id);
       }
     } catch (err) {
-      console.error('Error deleting comment:', err);
-      alert('Une erreur est survenue lors de la suppression du commentaire.');
+      console.error('Erreur lors de la suppression du commentaire:', err);
+      setError(
+        err.response?.data?.message || 
+        'Une erreur est survenue lors de la suppression du commentaire.'
+      );
     } finally {
       setLoading(false);
     }
@@ -134,16 +123,12 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
       };
       
       const response = await replyToComment(postId, comment.id, replyData);
+      const responseData = response.data.comment || response.data;
       
-      // Créer un objet réponse complet pour l'affichage
       const newReply = {
-        id: response.data.id || `reply-${Date.now()}`,
-        content: replyData.content,
-        user_id: user.id,
+        ...responseData,
         post_id: postId,
         parent_id: comment.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
         user: {
           id: user.id,
           first_name: user.first_name,
@@ -152,17 +137,15 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
         }
       };
       
+      console.log('Réponse créée:', newReply);
+      if (onReplyAdded) {
+        onReplyAdded(newReply);
+      }
+      
       setReplyContent('');
       setIsReplying(false);
-      
-      if (onReplyAdded) {
-        // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
-        setTimeout(() => {
-          onReplyAdded(newReply);
-        }, 0);
-      }
     } catch (err) {
-      console.error('Error creating reply:', err);
+      console.error('Erreur lors de la création de la réponse:', err);
       setError(
         err.response?.data?.message || 
         'Une erreur est survenue lors de la création de la réponse.'
@@ -186,6 +169,7 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 rows="2"
+                disabled={loading}
               ></textarea>
               
               {error && (
@@ -217,13 +201,13 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
                 <div className="flex justify-between items-start">
                   <p className="text-sm font-medium text-gray-900">{comment.user?.first_name} {comment.user?.last_name}</p>
                   
-                  {/* Boutons d'action toujours visibles pour les commentaires de l'utilisateur */}
                   {isAuthor && (
                     <div className="flex space-x-1 ml-2">
                       <button 
                         className="text-gray-500 hover:text-blue-600 p-1"
                         onClick={handleEdit}
                         title="Modifier ce commentaire"
+                        disabled={loading}
                       >
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -233,6 +217,7 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
                         className="text-gray-500 hover:text-red-600 p-1"
                         onClick={handleDelete}
                         title="Supprimer ce commentaire"
+                        disabled={loading}
                       >
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -267,7 +252,6 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
             </>
           )}
           
-          {/* Formulaire de réponse */}
           {isReplying && !isEditing && (
             <div className="mt-2">
               <form onSubmit={handleSubmitReply} className="flex items-start space-x-2">
@@ -281,6 +265,7 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
                     placeholder="Écrivez une réponse..."
                     value={replyContent}
                     onChange={(e) => setReplyContent(e.target.value)}
+                    disabled={loading}
                   />
                   {error && (
                     <div className="mt-1 text-xs text-red-500">
@@ -293,6 +278,7 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
                     type="button"
                     onClick={handleCancelReply}
                     className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 rounded"
+                    disabled={loading}
                   >
                     Annuler
                   </button>
@@ -312,7 +298,6 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
             </div>
           )}
           
-          {/* Affichage des réponses */}
           {showReplies && replies.length > 0 && (
             <div className="ml-4 mt-2 space-y-3 border-l-2 border-gray-200 pl-3">
               {replies.map(reply => (
@@ -323,7 +308,7 @@ const CommentItem = ({ comment, postId, onCommentUpdated, onCommentDeleted, onRe
                   onCommentUpdated={onCommentUpdated}
                   onCommentDeleted={onCommentDeleted}
                   onReplyAdded={onReplyAdded}
-                  replies={[]} // Pas de réponses imbriquées à ce niveau
+                  replies={[]}
                 />
               ))}
             </div>
