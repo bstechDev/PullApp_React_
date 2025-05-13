@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../features/auth/contexts/AuthContext';
 import Button from '../auth/components/Button';
 import { deletePost, updatePost } from './feedService';
+import { toggleLike, checkUserLiked, getLikesCount } from './likeService';
 import CommentsList from './CommentsList';
 import CreateCommentForm from './CreateCommentForm';
 
@@ -13,6 +14,7 @@ const formatDate = (dateString) => {
 };
 
 // Fonction améliorée pour construire l'URL complète de l'image
+// eslint-disable-next-line no-unused-vars
 const getImageUrl = (imagePath) => {
   if (!imagePath) return null;
   
@@ -35,6 +37,8 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [isLikeLoading, setIsLikeLoading] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [imageError, setImageError] = useState(false);
   // Nouvelles variables d'état pour les commentaires
@@ -64,7 +68,26 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
     if (postData?.comments_count !== undefined) {
       setCommentsCount(postData.comments_count);
     }
-  }, [postData?.content, postData?.comments_count]);
+    if (postData?.likes_count !== undefined) {
+      setLikesCount(postData.likes_count);
+    }
+    
+    // Récupérer l'état du like pour ce post
+    const fetchLikeStatus = async () => {
+      try {
+        const liked = await checkUserLiked(postData.id);
+        setIsLiked(liked);
+        
+        // Récupérer le nombre de likes exact
+        const count = await getLikesCount(postData.id);
+        setLikesCount(count);
+      } catch (err) {
+        console.error('Erreur lors de la récupération du statut de like:', err);
+      }
+    };
+    
+    fetchLikeStatus();
+  }, [postData?.content, postData?.comments_count, postData?.likes_count, postData.id]);
 
   const isAuthor = user?.id === postData.user_id;
   
@@ -126,13 +149,37 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
     }
   };
 
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    // Ici vous pourriez ajouter l'appel API pour liker le post
+  const handleLike = async () => {
+    setIsLikeLoading(true);
+    
+    try {
+      // Appeler l'API pour toggle le like
+      const response = await toggleLike(postData.id);
+      
+      // Mettre à jour l'état local
+      const newLikeState = response.liked;
+      setIsLiked(newLikeState);
+      
+      // Récupérer le compte à jour des likes
+      const newCount = await getLikesCount(postData.id);
+      setLikesCount(newCount);
+      
+      // Mettre à jour le post parent si nécessaire
+      if (onPostUpdated) {
+        const updatedPost = {
+          ...postData,
+          likes_count: newCount
+        };
+        onPostUpdated(updatedPost);
+      }
+    } catch (err) {
+      console.error('Erreur lors du toggle du like:', err);
+    } finally {
+      setIsLikeLoading(false);
+    }
   };
   
   // Fonction pour gérer la création d'un nouveau commentaire
-
   const handleCommentCreated = (comment, tempId = null) => {
     console.log("PostItem reçoit le commentaire:", comment, "tempId:", tempId);
     
@@ -390,11 +437,11 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
         <>
           <div className="px-4 py-2 border-t border-gray-100 flex justify-between text-xs text-gray-500">
             <div className="flex items-center">
-              <svg className="h-4 w-4 text-blue-500 mr-1" fill="currentColor" viewBox="0 0 24 24">
+              <svg className={`h-4 w-4 ${isLiked ? 'text-blue-500' : 'text-gray-400'} mr-1`} fill="currentColor" viewBox="0 0 24 24">
                 <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"></path>
               </svg>
               <span>
-                {isLiked ? (postData.likes_count ? postData.likes_count + 1 : 1) : (postData.likes_count || 0)} J'aime
+                {likesCount} J'aime
               </span>
             </div>
             <button 
@@ -409,11 +456,23 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
           <div className="px-4 py-2 border-t border-gray-100 flex justify-between">
             <button
               onClick={handleLike}
-              className={`flex items-center justify-center w-1/3 py-1 text-sm font-medium rounded-md ${isLiked ? 'text-blue-500' : 'text-gray-500 hover:text-gray-700'}`}
+              disabled={isLikeLoading}
+              className={`flex items-center justify-center w-1/3 py-1 text-sm font-medium rounded-md ${
+                isLiked ? 'text-blue-500' : 'text-gray-500 hover:text-gray-700'
+              }`}
             >
-              <svg className="h-5 w-5 mr-1" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017a2 2 0 01-1.995-1.8l-.73-7.3a2 2 0 011.995-2.2H14z"></path>
-              </svg>
+              {isLikeLoading ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </span>
+              ) : (
+                <svg className="h-5 w-5 mr-1" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017a2 2 0 01-1.995-1.8l-.73-7.3a2 2 0 011.995-2.2H14z"></path>
+                </svg>
+              )}
               J'aime
             </button>
             
