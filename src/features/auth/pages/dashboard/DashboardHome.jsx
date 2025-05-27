@@ -153,23 +153,46 @@ const DashboardHome = () => {
           <FeedList newPost={newPost} />
         </div>
       
-      
-      {/* Statistiques */}
-      <div className="lg:col-span-3">
-        <div className="bg-white shadow rounded-lg p-4 sticky top-20">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Statistiques</h2>
-          <div className="flex items-center space-x-4">
-            <div className="flex-1 bg-blue-100 p-4 rounded-lg">
-              <p className="text-lg font-medium text-blue-700">Posts</p>
-              <p className="text-2xl font-bold text-blue-900">123</p>
-            </div>
-            <div className="flex-1 bg-green-100 p-4 rounded-lg">
-              <p className="text-lg font-medium text-green-700">Commentaires</p>
-              <p className="text-2xl font-bold text-green-900">4562151</p>
+      {/* Sidebar droite */}
+        <div className="hidden lg:block md:col-span-3">
+          <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Suggestions</h3>
+            <div className="space-y-4">
+              {/* Suggestions d'amis/collègues */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-white">
+                    JD
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900">Jean Dupont</p>
+                    <p className="text-xs text-gray-500">Marketing</p>
+                  </div>
+                </div>
+                <button className="text-blue-500 hover:text-blue-700 text-sm font-medium">
+                  + Suivre
+                </button>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-white">
+                    ML
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-900">Marie Leroy</p>
+                    <p className="text-xs text-gray-500">Design</p>
+                  </div>
+                </div>
+                <button className="text-blue-500 hover:text-blue-700 text-sm font-medium">
+                  + Suivre
+                </button>
+                </div>
             </div>
           </div>
         </div>
-      </div>
+      
+      
       </div>
   );
 };

@@ -4,7 +4,6 @@ import axios from 'axios';
 // Au lieu de l'URL complète, on utilise un chemin relatif
 // qui sera géré par le proxy Vite
 const API_URL = '/api';
-// const API_URL = 'http://192.168.1.5:5173/api';
 
 const api = axios.create({
   baseURL: API_URL,
