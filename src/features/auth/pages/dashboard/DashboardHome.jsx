@@ -97,50 +97,108 @@ const DashboardHome = () => {
       <div className="md:col-span-6">
           {/* Zone de création de post */}
           <div className="bg-white rounded-lg shadow mb-6 p-4">
-            <div className="flex items-center space-x-4">
-              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
-                {user?.first_name?.[0]}{user?.last_name?.[0]}
+            <div className="flex items-center space-x-4 mb-6">
+              <div className="relative group">
+                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-lg shadow-md ring-2 ring-white">
+                  {user?.first_name?.[0]}{user?.last_name?.[0]}
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
               </div>
+              
               <div 
-                className="w-full bg-gray-100 hover:bg-gray-200 rounded-full px-4 py-2.5 text-gray-500 cursor-pointer transition-colors"
+                className="flex-1 bg-gray-50 hover:bg-gray-100 rounded-2xl px-6 py-4 text-gray-500 cursor-pointer transition-all duration-300 border-2 border-transparent hover:border-blue-200 hover:shadow-sm"
                 onClick={openCreatePost}
               >
-                Quoi de neuf, {user?.first_name || 'utilisateur'} ?
+                <span className="text-base font-medium">
+                  Quoi de neuf, {user?.first_name || 'utilisateur'} ?
+                </span>
               </div>
             </div>
+
+            {/* Séparateur avec gradient */}
+            <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent mb-6"></div>
+
+
             
-            <div className="mt-3 flex justify-between border-t pt-3">
+            {/* Boutons d'action redesignés */}
+            <div className="flex justify-around">
+              {/* Photo */}
               <button 
-                className="flex items-center text-gray-600 hover:bg-gray-100 px-3 py-1 rounded-md"
-                // onClick={openCreatePost}
-              >
-                <svg className="h-6 w-6 text-red-500 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"></path>
-                </svg>
-                <span className="hidden sm:inline">Vidéo en direct</span>
-              </button>
-              
-              <button 
-                className="flex items-center text-gray-600 hover:bg-gray-100 px-3 py-1 rounded-md"
+                className="group relative overflow-hidden flex items-center justify-center space-x-3 px-4 py-3.5 rounded-xl hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-all duration-300 border border-transparent hover:border-green-200"
                 onClick={openCreatePost}
               >
-                <svg className="h-6 w-6 text-green-500 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"></path>
-                </svg>
-                <span className="hidden sm:inline">Photo/Vidéo</span>
+                <div className="relative">
+                  <div className="p-2 rounded-xl bg-green-100 group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
+                    <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"/>
+                    </svg>
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+                </div>
+                <span className="text-gray-700 font-medium text-sm group-hover:text-green-700 transition-colors duration-300">
+                  Photo
+                </span>
               </button>
               
+              {/* Vidéo */}
               <button 
-                className="flex items-center text-gray-600 hover:bg-gray-100 px-3 py-1 rounded-md"
+                className="group relative overflow-hidden flex items-center justify-center space-x-3 px-4 py-3.5 rounded-xl hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 transition-all duration-300 border border-transparent hover:border-red-200"
                 onClick={openCreatePost}
               >
-                <svg className="h-6 w-6 text-yellow-500 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"></path>
-                </svg>
-                <span className="hidden sm:inline">Humeur/Activité</span>
+                <div className="relative">
+                  <div className="p-2 rounded-xl bg-red-100 group-hover:bg-red-200 transition-all duration-300 group-hover:scale-110">
+                    <svg className="h-5 w-5 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                    </svg>
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+                </div>
+                <span className="text-gray-700 font-medium text-sm group-hover:text-red-700 transition-colors duration-300">
+                  Vidéo
+                </span>
+              </button>
+              
+              {/* Événement */}
+              <button 
+                className="group relative overflow-hidden flex items-center justify-center space-x-3 px-4 py-3.5 rounded-xl hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50 transition-all duration-300 border border-transparent hover:border-orange-200"
+                onClick={openCreatePost}
+              >
+                <div className="relative">
+                  <div className="p-2 rounded-xl bg-orange-100 group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
+                    <svg className="h-5 w-5 text-orange-600" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                    </svg>
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+                </div>
+                <span className="text-gray-700 font-medium text-sm group-hover:text-orange-700 transition-colors duration-300">
+                  Événement
+                </span>
+              </button>
+              
+              {/* Sentiment/Activité */}
+              <button 
+                className="group relative overflow-hidden flex items-center justify-center space-x-3 px-4 py-3.5 rounded-xl hover:bg-gradient-to-r hover:from-yellow-50 hover:to-amber-50 transition-all duration-300 border border-transparent hover:border-yellow-200"
+                onClick={openCreatePost}
+              >
+                <div className="relative">
+                  <div className="p-2 rounded-xl bg-yellow-100 group-hover:bg-yellow-200 transition-all duration-300 group-hover:scale-110">
+                    <svg className="h-5 w-5 text-yellow-600" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+                    </svg>
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+                </div>
+                <span className="text-gray-700 font-medium text-sm group-hover:text-yellow-700 transition-colors duration-300 hidden sm:inline">
+                  Sentiment
+                </span>
+                <span className="text-gray-700 font-medium text-sm group-hover:text-yellow-700 transition-colors duration-300 sm:hidden">
+                  Humeur
+                </span>
               </button>
             </div>
           </div>
+        
           
           {/* Formulaire de création de post */}
           <CreatePostForm 

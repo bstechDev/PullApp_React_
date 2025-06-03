@@ -4,7 +4,7 @@ import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import api from '../../../services/api';
 
 const AccountSettings = () => {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [updateError, setUpdateError] = useState(null);
@@ -61,15 +61,26 @@ const AccountSettings = () => {
       const response = await api.patch('/user/settings', profileUpdateData);
       
       if (response.data?.user) {
-        setUpdateSuccess(true);
-        // Mettre à jour les données utilisateur dans localStorage
-        const userData = response.data.user;
-        localStorage.setItem('user_data', JSON.stringify(userData));
-        // Afficher un message de succès pendant 3 secondes
-        setTimeout(() => {
-          setUpdateSuccess(false);
-        }, 3000);
-      }
+      const userData = response.data.user;
+
+      // ✅ Met à jour le localStorage
+      localStorage.setItem('user_data', JSON.stringify(userData));
+
+      // ✅ Met à jour le contexte (global)
+      setUser(userData);
+
+      // ✅ Optionnel : synchroniser le formulaire avec les nouvelles données
+      setProfileData(prev => ({
+        ...prev,
+        ...userData
+      }));
+
+      setUpdateSuccess(true);
+      setTimeout(() => {
+        setUpdateSuccess(false);
+      }, 3000);
+    }
+
     } catch (error) {
       console.error('Erreur de mise à jour du profil:', error.response?.data || error);
       setUpdateError(error.response?.data?.message || 'Une erreur est survenue lors de la mise à jour du profil');

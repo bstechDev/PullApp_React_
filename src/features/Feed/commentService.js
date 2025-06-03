@@ -102,11 +102,12 @@ export const deleteComment = async (postId, commentId) => {
   }
 };
 
-// Récupérer le nombre de commentaires pour un post
+// Compte les commentaires en récupérant toute la liste
 export const getCommentsCount = async (postId) => {
   try {
-    const response = await api.get(`/posts/${postId}/comments/count`);
-    return response;
+    const response = await api.get(`/posts/${postId}/comments`);
+    const comments = response.data;
+    return comments.length; // <- C'est ça qu'on veut !
   } catch (error) {
     console.error('Erreur lors de la récupération du nombre de commentaires:', error);
     throw error;

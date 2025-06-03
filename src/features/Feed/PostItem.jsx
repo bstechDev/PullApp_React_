@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../features/auth/contexts/AuthContext';
 import Button from '../auth/components/Button';
 import { deletePost, updatePost } from './feedService';
+import { getCommentsCount } from './commentService';
 import { toggleLike, checkUserLiked, getLikesCount } from './likeService';
 import CommentsList from './CommentsList';
 import CreateCommentForm from './CreateCommentForm';
@@ -11,6 +12,36 @@ import CreateCommentForm from './CreateCommentForm';
 const formatDate = (dateString) => {
   const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
   return new Date(dateString).toLocaleDateString('fr-FR', options);
+};
+
+// Fonction pour formater la date d'événement
+const formatEventDate = (dateString) => {
+  const options = { 
+    weekday: 'long',
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  };
+  return new Date(dateString).toLocaleDateString('fr-FR', options);
+};
+
+// Fonction pour obtenir le statut de l'événement
+const getEventStatus = (eventDate) => {
+  const now = new Date();
+  const eventDateTime = new Date(eventDate);
+  const diffInHours = (eventDateTime - now) / (1000 * 60 * 60);
+  
+  if (diffInHours < 0) {
+    return { status: 'past', label: 'Événement passé', color: 'text-gray-500 bg-gray-100' };
+  } else if (diffInHours < 24) {
+    return { status: 'today', label: 'Aujourd\'hui', color: 'text-red-600 bg-red-100' };
+  } else if (diffInHours < 168) { // 7 jours
+    return { status: 'this-week', label: 'Cette semaine', color: 'text-orange-600 bg-orange-100' };
+  } else {
+    return { status: 'upcoming', label: 'À venir', color: 'text-blue-600 bg-blue-100' };
+  }
 };
 
 // Fonction améliorée pour construire l'URL complète de l'image
@@ -30,6 +61,18 @@ const getImageUrl = (imagePath) => {
   return `${baseUrl}/storage/${imagePath}`;
 };
 
+// Fonction pour construire l'URL complète de la vidéo
+const getVideoUrl = (videoPath) => {
+  if (!videoPath) return null;
+  
+  if (videoPath.startsWith('http')) {
+    return videoPath;
+  }
+  
+  const baseUrl = 'http://192.168.1.4:8000';
+  return `${baseUrl}/storage/${videoPath}`;
+};
+
 const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -41,6 +84,7 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   const [isLikeLoading, setIsLikeLoading] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   // Nouvelles variables d'état pour les commentaires
   const [newComment, setNewComment] = useState(null);
   const [commentsCount, setCommentsCount] = useState(0);
@@ -58,6 +102,10 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
     console.error('Invalid post object:', post);
     return null;
   }
+
+  // Déterminer si c'est un événement
+  const isEvent = postData.type === 'event';
+  const eventStatus = isEvent && postData.event_date ? getEventStatus(postData.event_date) : null;
 
   // Set initial content and comments count after validation
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -85,9 +133,20 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
         console.error('Erreur lors de la récupération du statut de like:', err);
       }
     };
+
+    // ✅ Cette nouvelle fonction va récupérer le vrai nombre de commentaires
+  const fetchCommentsCount = async () => {
+    try {
+      const count = await getCommentsCount(postData.id);
+      setCommentsCount(count);
+    } catch (err) {
+      console.error('Erreur lors de la récupération du nombre de commentaires:', err);
+    }
+  };
     
+    fetchCommentsCount();
     fetchLikeStatus();
-  }, [postData?.content, postData?.comments_count, postData?.likes_count, postData.id]);
+  }, [postData?.content, postData?.comments_count, postData?.likes_count, postData?.id]);
 
   const isAuthor = user?.id === postData.user_id;
   
@@ -178,6 +237,12 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
       setIsLikeLoading(false);
     }
   };
+
+  // Fonction pour gérer les erreurs vidéo
+  const handleVideoError = () => {
+    console.error('Erreur de chargement de vidéo:', postData.video_path);
+    setVideoError(true);
+  };
   
   // Fonction pour gérer la création d'un nouveau commentaire
   const handleCommentCreated = (comment, tempId = null) => {
@@ -254,6 +319,26 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
     <div className="bg-white rounded-lg shadow mb-4 overflow-hidden">
       {/* En-tête du post */}
       <div className="p-4">
+
+        {/* Badge de type pour les événements */}
+        {isEvent && (
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                </svg>
+                Événement
+              </div>
+              {eventStatus && (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${eventStatus.color}`}>
+                  {eventStatus.label}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex items-start">
           {/* Avatar */}
           <div className="flex-shrink-0">
@@ -321,6 +406,62 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
             </div>
           </div>
         </div>
+
+        {/* Informations spécifiques à l'événement */}
+        {isEvent && postData.event_date && (
+          <div className="mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0">
+                <div className="bg-blue-100 rounded-lg p-3">
+                  <svg className="h-6 w-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                  Détails de l'événement
+                </h4>
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm text-gray-700">
+                    <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="font-medium">Date:</span>
+                    <span className="ml-2">{formatEventDate(postData.event_date)}</span>
+                  </div>
+                  
+                  {postData.event_location && (
+                    <div className="flex items-center text-sm text-gray-700">
+                      <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="font-medium">Lieu:</span>
+                      <span className="ml-2">{postData.event_location}</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Boutons d'action pour événement */}
+                <div className="flex space-x-3 mt-4">
+                  <button className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                    <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Participer
+                  </button>
+                  <button className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors">
+                    <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    Partager
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Contenu du post */}
         {isEditing ? (
@@ -416,6 +557,39 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
                 </div>
               </div>
             )}
+
+            {/* NOUVEAU : Affichage de la vidéo si elle existe */}
+            {postData.video_path && !videoError && (
+              <div className="mt-3">
+                <div className="rounded-lg overflow-hidden bg-gray-900">
+                  <video 
+                    src={getVideoUrl(postData.video_path)}
+                    className="w-full h-auto object-cover max-h-96"
+                    controls
+                    preload="metadata"
+                    onError={handleVideoError}
+                    onClick={(e) => {
+                      // Empêcher la propagation pour éviter les conflits avec les contrôles
+                      e.stopPropagation();
+                    }}
+                  >
+                    <source src={getVideoUrl(postData.video_path)} type="video/mp4" />
+                    <source src={getVideoUrl(postData.video_path)} type="video/webm" />
+                    <source src={getVideoUrl(postData.video_path)} type="video/ogg" />
+                    Votre navigateur ne supporte pas les vidéos HTML5.
+                  </video>
+                </div>
+                {/* Informations optionnelles sur la vidéo */}
+                {postData.video_duration && (
+                  <div className="mt-2 text-xs text-gray-500 flex items-center">
+                    <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Durée: {postData.video_duration}
+                  </div>
+                )}
+              </div>
+            )}
             
             {/* Image de remplacement en cas d'erreur */}
             {postData.image_path && imageError && (
@@ -431,6 +605,23 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
           </div>
         )}
       </div>
+
+      {/* NOUVEAU : Message d'erreur pour la vidéo */}
+      {postData.video_path && videoError && (
+        <div className="mt-3">
+          <div className="rounded-lg overflow-hidden bg-gray-100 p-4 text-center">
+            <svg className="h-12 w-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            <p className="text-sm text-gray-500">Vidéo non disponible</p>
+            {postData.video_path && (
+              <p className="text-xs text-gray-400 mt-1">
+                Chemin: {postData.video_path}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
       
       {/* Compteurs de réactions */}
       {!isEditing && (
