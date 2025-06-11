@@ -33,7 +33,7 @@ const ProtectedRoute = ({ children }) => {
     const checkToken = async () => {
       const token = localStorage.getItem('auth_token');
       if (!token) {
-        navigate('/', { replace: true });
+        navigate('/login', { replace: true });
         setTokenCheckComplete(true);
         return;
       }
@@ -43,7 +43,7 @@ const ProtectedRoute = ({ children }) => {
         setTokenCheckComplete(true);
         if (!user) {
           // Si pas d'utilisateur après chargement, rediriger vers login
-          navigate('/', { replace: true });
+          navigate('/login');
         }
       }
     };
@@ -91,7 +91,7 @@ const AppRoutes = () => {
       <Routes>
         {/* Routes publiques */}
         <Route element={<AuthLayout />}>
-          <Route path="/" element={
+          <Route path="/login" element={
             <PublicRoute>
               <LoginPage />
             </PublicRoute>
@@ -136,7 +136,7 @@ const AppRoutes = () => {
         </Route>
         
         {/* Redirection pour les routes inconnues */}
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </BrowserRouter>
   );

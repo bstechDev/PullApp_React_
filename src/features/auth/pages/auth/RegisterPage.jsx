@@ -85,7 +85,7 @@ const RegisterPage = () => {
       });
       
       // Modification de la redirection vers la page de connexion
-      navigate('/', { 
+      navigate('/login', { 
         state: { 
           message: 'Inscription réussie ! Vous pouvez maintenant vous connecter.' 
         } 

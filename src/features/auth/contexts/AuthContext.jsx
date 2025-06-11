@@ -139,7 +139,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await authService.register(userData);
-      setUser(response.data.user);
+      // setUser(response.data.user);
       return response.data;
     } catch (err) {
       setError(err.response?.data?.message || 'Une erreur est survenue lors de l\'inscription');

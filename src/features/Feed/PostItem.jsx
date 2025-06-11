@@ -7,6 +7,7 @@ import { getCommentsCount } from './commentService';
 import { toggleLike, checkUserLiked, getLikesCount } from './likeService';
 import CommentsList from './CommentsList';
 import CreateCommentForm from './CreateCommentForm';
+import VideoPlayer from '../auth/components/VideoPlayer';
 
 // Fonction pour formater la date
 const formatDate = (dateString) => {
@@ -561,33 +562,12 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
             {/* NOUVEAU : Affichage de la vidéo si elle existe */}
             {postData.video_path && !videoError && (
               <div className="mt-3">
-                <div className="rounded-lg overflow-hidden bg-gray-900">
-                  <video 
-                    src={getVideoUrl(postData.video_path)}
-                    className="w-full h-auto object-cover max-h-96"
-                    controls
-                    preload="metadata"
-                    onError={handleVideoError}
-                    onClick={(e) => {
-                      // Empêcher la propagation pour éviter les conflits avec les contrôles
-                      e.stopPropagation();
-                    }}
-                  >
-                    <source src={getVideoUrl(postData.video_path)} type="video/mp4" />
-                    <source src={getVideoUrl(postData.video_path)} type="video/webm" />
-                    <source src={getVideoUrl(postData.video_path)} type="video/ogg" />
-                    Votre navigateur ne supporte pas les vidéos HTML5.
-                  </video>
-                </div>
-                {/* Informations optionnelles sur la vidéo */}
-                {postData.video_duration && (
-                  <div className="mt-2 text-xs text-gray-500 flex items-center">
-                    <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Durée: {postData.video_duration}
-                  </div>
-                )}
+                <VideoPlayer
+                  src={getVideoUrl(postData.video_path)}
+                  poster={postData.thumbnail_path ? getImageUrl(postData.thumbnail_path) : null}
+                  duration={postData.video_duration}
+                  onError={handleVideoError}
+                />
               </div>
             )}
             
@@ -648,8 +628,8 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
             <button
               onClick={handleLike}
               disabled={isLikeLoading}
-              className={`flex items-center justify-center w-1/3 py-1 text-sm font-medium rounded-md ${
-                isLiked ? 'text-blue-500' : 'text-gray-500 hover:text-gray-700'
+              className={`flex items-center justify-center w-1/3 py-1 text-sm font-medium rounded-md cursor-pointer ${
+                isLiked ? 'text-blue-500' : 'text-gray-500 hover:text-gray-700 cursor-pointer' 
               }`}
             >
               {isLikeLoading ? (
@@ -660,8 +640,8 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
                   </svg>
                 </span>
               ) : (
-                <svg className="h-5 w-5 mr-1" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017a2 2 0 01-1.995-1.8l-.73-7.3a2 2 0 011.995-2.2H14z"></path>
+                <svg className={`h-4 w-4 ${isLiked ? 'text-blue-500' : 'text-gray-400'} mr-1`} fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"></path>
                 </svg>
               )}
               J'aime
