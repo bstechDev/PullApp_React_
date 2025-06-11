@@ -21,6 +21,7 @@ import Notifications from '../features/auth/pages/Notifications';
 import Groups from '../features/auth/pages/Groups';
 import Profile from '../features/auth/pages/Profile';
 import Settings from '../features/auth/pages/Settings';
+import Friends from '../features/auth/pages/Groups';
 
 // Route protégée qui vérifie si l'utilisateur est connecté
 const ProtectedRoute = ({ children }) => {
@@ -129,7 +130,7 @@ const AppRoutes = () => {
           {/* Sous-routes du Dashboard */}
           <Route path="messages" element={<Messages />} />
           <Route path="notifications" element={<Notifications />} />
-          <Route path="groups" element={<Groups />} />
+          <Route path="groups" element={<Friends />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
         </Route>
