@@ -18,13 +18,51 @@ export const useFriends = () => {
   const loadUsers = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const data = await friendsService.getAllUsers(page);
-      setUsers(data.users.data);
+      // Charger les données en parallèle
+      const [userData, pendingRequestsData] = await Promise.all([
+        friendsService.getAllUsers(page),
+        friendsService.getPendingFriendRequests()
+      ]);
+
+      // Mettre à jour les demandes en attente
+      setPendingRequests(pendingRequestsData);
+
+      // Mettre à jour les utilisateurs avec distinction des demandes envoyées/reçues
+      setUsers(userData.users.data.map(user => {
+        // Vérifier si on a envoyé une demande à cet utilisateur
+        const sentRequest = pendingRequestsData.find(req => 
+          req.requester_id === userData.current_user_id && req.user.id === user.id
+        );
+
+        // Vérifier si on a reçu une demande de cet utilisateur
+        const receivedRequest = pendingRequestsData.find(req => 
+          req.requester_id === user.id && req.user.id === userData.current_user_id
+        );
+
+        if (sentRequest) {
+          return { 
+            ...user, 
+            friendship_status: 'pending',
+            request_type: 'sent',
+            request_id: sentRequest.id
+          };
+        } else if (receivedRequest) {
+          return { 
+            ...user, 
+            friendship_status: 'pending',
+            request_type: 'received',
+            request_id: receivedRequest.id
+          };
+        }
+
+        return user;
+      }));
+
       setPagination({
-        current_page: data.users.current_page,
-        last_page: data.users.last_page,
-        per_page: data.users.per_page,
-        total: data.users.total
+        current_page: userData.users.current_page,
+        last_page: userData.users.last_page,
+        per_page: userData.users.per_page,
+        total: userData.users.total
       });
     } catch (err) {
       setError(err.message);
@@ -74,10 +112,12 @@ export const useFriends = () => {
     try {
       const res = await friendsService.acceptFriendRequest(userId);
       
-      // Mettre à jour le statut à "friends"
+      // Mettre à jour le statut à "friends" pour les deux utilisateurs
       setUsers(prevUsers => 
         prevUsers.map(user =>
-          user.id === userId ? { ...user, friendship_status: 'friends' } : user
+          user.id === userId || user.id === res.data.requesterId
+            ? { ...user, friendship_status: 'friends' }
+            : user
         )
       );
       
@@ -87,13 +127,16 @@ export const useFriends = () => {
       // Recharger la liste d'amis
       await loadFriendsList();
       
+      // Recharger tous les utilisateurs pour s'assurer de la synchronisation
+      await loadUsers();
+      
       return res;
     } catch (err) {
       console.error('Erreur dans acceptFriendRequest:', err);
       setError('Erreur lors de l\'acceptation de la demande');
       throw err;
     }
-  }, [loadFriendsList]);
+  }, [loadFriendsList, loadUsers]);
 
   const rejectFriendRequest = useCallback(async (userId) => {
     try {

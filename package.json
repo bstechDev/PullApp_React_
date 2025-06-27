@@ -16,10 +16,14 @@
     "@mui/material": "^7.1.0",
     "@tailwindcss/vite": "^4.1.4",
     "axios": "^1.8.4",
+    "framer-motion": "^12.19.1",
     "lucide-react": "^0.503.0",
+    "motion": "^12.19.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.0",
+    "react-toastify": "^11.0.5",
+    "react-tooltip": "^5.29.1",
     "tailwindcss": "^4.1.4"
   },
   "devDependencies": {

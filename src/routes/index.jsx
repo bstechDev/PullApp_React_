@@ -18,10 +18,9 @@ import EmailVerifiedPage from '../features/auth/pages/auth/EmailVerifiedPage';
 import DashboardHome from '../features/auth/pages/dashboard/DashboardHome';
 import Messages from '../features/auth/pages/Messages';
 import Notifications from '../features/auth/pages/Notifications';
-import Groups from '../features/auth/pages/Groups';
 import Profile from '../features/auth/pages/Profile';
 import Settings from '../features/auth/pages/Settings';
-import Friends from '../features/auth/pages/Groups';
+import Friends from '../features/auth/pages/Friends';
 
 // Route protégée qui vérifie si l'utilisateur est connecté
 const ProtectedRoute = ({ children }) => {
@@ -130,7 +129,7 @@ const AppRoutes = () => {
           {/* Sous-routes du Dashboard */}
           <Route path="messages" element={<Messages />} />
           <Route path="notifications" element={<Notifications />} />
-          <Route path="groups" element={<Friends />} />
+          <Route path="friends" element={<Friends />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
         </Route>
