@@ -643,13 +643,13 @@ const CreatePostForm = ({ onPostCreated, onCancel, isVisible = false }) => {
                       <img 
                         src={previewImage} 
                         alt="Aperçu" 
-                        className="w-full max-h-80 object-cover"
+                        className="w-full max-h-60 object-cover"
                       />
                     )}
                     {previewVideo && (
                       <video 
                         src={previewVideo} 
-                        className="w-full max-h-80 object-cover"
+                        className="w-full max-h-60 object-cover"
                         controls
                         preload="metadata"
                       >
@@ -819,7 +819,7 @@ const CreatePostForm = ({ onPostCreated, onCancel, isVisible = false }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleCancel}>
       <div 
         className={`bg-white rounded-2xl shadow-2xl transform transition-all ${
-          modalType === 'event' ? 'max-w-2xl w-full max-h-[90vh] overflow-y-auto' : 'max-w-lg w-full'
+          modalType === 'event' ? 'max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col' : 'max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col'
         }`}
         ref={formRef} 
         onClick={(e) => e.stopPropagation()}
@@ -839,8 +839,10 @@ const CreatePostForm = ({ onPostCreated, onCancel, isVisible = false }) => {
           </button>
         </div>
         
-        {/* Contenu dynamique du modal */}
-        {getModalContent()}
+        {/* Contenu dynamique du modal avec défilement */}
+        <div className="flex-1 overflow-y-auto">
+          {getModalContent()}
+        </div>
       </div>
     </div>
   );
