@@ -1,4 +1,3 @@
-// src/routes/index.jsx
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/contexts/AuthContext';
@@ -128,6 +127,7 @@ const AppRoutes = () => {
           
           {/* Sous-routes du Dashboard */}
           <Route path="messages" element={<Messages />} />
+          <Route path="messages/:receiverId" element={<Messages />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="friends" element={<Friends />} />
           <Route path="profile" element={<Profile />} />

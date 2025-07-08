@@ -450,9 +450,9 @@ const Friends = () => {
                         {getAvatar(u.first_name, u.last_name)}
                       </div>
                       {/* Indicateur en ligne */}
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white shadow-sm">
+                      {/* <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white shadow-sm">
                         <div className="w-full h-full bg-green-400 rounded-full animate-ping opacity-75"></div>
-                      </div>
+                      </div> */}
                     </div>
                     
                     <div className="text-center mb-3">

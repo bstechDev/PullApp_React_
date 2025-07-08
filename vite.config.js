@@ -10,7 +10,7 @@ export default defineConfig({
   },
   server: {
     port: 5173, // Port par défaut de Vite
-    host: '192.168.1.5', // Ton adresse IP locale
+    host: 'localhost', // Ton adresse IP locale
     
     // Configuration du proxy pour éviter les problèmes CORS
     proxy: {
