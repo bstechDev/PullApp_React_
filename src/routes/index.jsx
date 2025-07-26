@@ -20,6 +20,7 @@ import Notifications from '../features/auth/pages/Notifications';
 import Profile from '../features/auth/pages/Profile';
 import Settings from '../features/auth/pages/Settings';
 import Friends from '../features/auth/pages/Friends';
+import Calls from '../features/auth/pages/Calls'; 
 
 // Route protégée qui vérifie si l'utilisateur est connecté
 const ProtectedRoute = ({ children }) => {
@@ -83,9 +84,13 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-const AppRoutes = () => {
+import { StatusManager } from '../components/StatusManager';
+
+// Dans votre composant de routage
+export default function AppRoutes() {
   return (
     <BrowserRouter>
+      <StatusManager /> {/* Ajout du gestionnaire de statut */}
       <Routes>
         {/* Routes publiques */}
         <Route element={<AuthLayout />}>
@@ -128,6 +133,7 @@ const AppRoutes = () => {
           {/* Sous-routes du Dashboard */}
           <Route path="messages" element={<Messages />} />
           <Route path="messages/:receiverId" element={<Messages />} />
+          <Route path="calls" element={<Calls />} /> {/* 👈 Nouvelle route */}
           <Route path="notifications" element={<Notifications />} />
           <Route path="friends" element={<Friends />} />
           <Route path="profile" element={<Profile />} />
@@ -139,6 +145,4 @@ const AppRoutes = () => {
       </Routes>
     </BrowserRouter>
   );
-};
-
-export default AppRoutes;
+}

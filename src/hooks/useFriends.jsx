@@ -27,56 +27,56 @@ export const useFriends = () => {
       // Mettre à jour les demandes en attente
       setPendingRequests(pendingRequestsData);
 
-      // Mettre à jour les utilisateurs avec distinction des demandes envoyées/reçues
-      setUsers(userData.users.data.map(user => {
-        // Vérifier si on a envoyé une demande à cet utilisateur
-        const sentRequest = pendingRequestsData.find(req => 
-          req.requester_id === userData.current_user_id && req.user.id === user.id
-        );
+      if (userData?.users?.data) {
+        // Mettre à jour les utilisateurs avec distinction des demandes envoyées/reçues
+        const updatedUsers = userData.users.data.map(user => {
+          // Vérifier si on a envoyé une demande à cet utilisateur
+          const sentRequest = pendingRequestsData.find(req => 
+            req.requester_id === userData.current_user_id && req.user.id === user.id
+          );
 
-        // Vérifier si on a reçu une demande de cet utilisateur
-        const receivedRequest = pendingRequestsData.find(req => 
-          req.requester_id === user.id && req.user.id === userData.current_user_id
-        );
+          // Vérifier si on a reçu une demande de cet utilisateur
+          const receivedRequest = pendingRequestsData.find(req => 
+            req.requester_id === user.id && req.user.id === userData.current_user_id
+          );
 
-        if (sentRequest) {
-          return { 
-            ...user, 
-            friendship_status: 'pending',
-            request_type: 'sent',
-            request_id: sentRequest.id
+          return {
+            ...user,
+            friendship_status: sentRequest ? 'pending' :
+                             receivedRequest ? 'pending' :
+                             user.friendship_status || 'none',
+            request_type: sentRequest ? 'sent' :
+                         receivedRequest ? 'received' : null,
+            request_id: sentRequest?.id || receivedRequest?.id
           };
-        } else if (receivedRequest) {
-          return { 
-            ...user, 
-            friendship_status: 'pending',
-            request_type: 'received',
-            request_id: receivedRequest.id
-          };
+        });
+
+        setUsers(updatedUsers);
+        
+        // Mettre à jour la liste des amis
+        const friends = updatedUsers.filter(user => user.friendship_status === 'friends');
+        setFriendsList(friends);
+        
+        // Sauvegarder la liste d'amis dans le localStorage pour récupération ultérieure
+        try {
+          localStorage.setItem('friends_list', JSON.stringify(friends));
+          console.log('💾 Liste d\'amis sauvegardée dans localStorage:', friends.length, 'amis');
+        } catch (e) {
+          console.error('Erreur lors de la sauvegarde de la liste d\'amis:', e);
         }
 
-        return user;
-      }));
-
-      setPagination({
-        current_page: userData.users.current_page,
-        last_page: userData.users.last_page,
-        per_page: userData.users.per_page,
-        total: userData.users.total
-      });
+        setPagination({
+          current_page: userData.users.current_page,
+          last_page: userData.users.last_page,
+          per_page: userData.users.per_page,
+          total: userData.users.total
+        });
+      }
     } catch (err) {
+      console.error('Error loading users:', err);
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  }, []);
-
-  const loadPendingRequests = useCallback(async () => {
-    try {
-      const requests = await friendsService.getPendingFriendRequests();
-      setPendingRequests(requests);
-    } catch (err) {
-      setError(err.message);
     }
   }, []);
 
@@ -218,9 +218,7 @@ export const useFriends = () => {
 
   const reload = useCallback(() => {
     loadUsers();
-    loadPendingRequests();
-    loadFriendsList();
-  }, [loadUsers, loadPendingRequests, loadFriendsList]);
+  }, [loadUsers]);
 
   useEffect(() => {
     reload();
@@ -236,8 +234,8 @@ export const useFriends = () => {
     sendFriendRequest,
     acceptFriendRequest,
     rejectFriendRequest,
-    removeFriend, // ✅ Nouvelle fonction
-    cancelFriendRequest, // ✅ Nouvelle fonction
+    removeFriend,
+    cancelFriendRequest,
     reload,
     searchUsers: (term) => friendsService.searchUsers(users, term),
     filterByStatus: (status) => friendsService.filterUsersByFriendshipStatus(users, status),
