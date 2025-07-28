@@ -120,25 +120,7 @@ export default function CallsPage() {
     }
   };
 
-  const handleDiagnoseCall = async (friendId) => {
-    try {
-      toast.info("Diagnostic en cours...");
-      const result = await callsService.diagnoseCallCreation(friendId);
-      
-      if (result.success) {
-        if (result.recovered) {
-          toast.success("Appel récupéré malgré l'erreur serveur !");
-        } else {
-          toast.success("Diagnostic réussi - appel créé normalement");
-        }
-        console.log("🔍 Résultat du diagnostic:", result);
-      } else {
-        toast.error("Diagnostic échoué - " + result.error);
-      }
-    } catch (error) {
-      toast.error("Erreur lors du diagnostic: " + error.message);
-    }
-  };
+  
 
   // Fonction pour rejoindre une salle avec vérification
   const handleJoinRoom = async (room) => {
@@ -260,13 +242,6 @@ export default function CallsPage() {
                         <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                       </svg>
                       Appeler
-                    </button>
-                    <button
-                      onClick={() => handleDiagnoseCall(friend.id)}
-                      className="flex items-center gap-2 px-2 py-2 rounded-lg transition-colors bg-gray-500 hover:bg-gray-600 text-white text-xs"
-                      title="Diagnostiquer l'appel"
-                    >
-                      🔍
                     </button>
                   </div>
                 </div>
