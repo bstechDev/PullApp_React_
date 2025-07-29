@@ -1,8 +1,10 @@
 // src/features/friends/hooks/useFriends.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { friendsService } from '../features/auth/services/friendsService'; 
+import { useAuth } from '../features/auth/contexts/AuthContext';
 
 export const useFriends = () => {
+  const { user, loading: authLoading } = useAuth();
   const [users, setUsers] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [friendsList, setFriendsList] = useState([]);
@@ -16,6 +18,19 @@ export const useFriends = () => {
   });
 
   const loadUsers = useCallback(async (page = 1) => {
+    // ✅ Vérifier l'authentification avant de faire les requêtes
+    if (authLoading || !user) {
+      console.log('🔒 Authentification en cours ou utilisateur non connecté, requêtes annulées');
+      return;
+    }
+
+    // ✅ Vérifier que le token existe
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      console.log('🔒 Aucun token d\'authentification trouvé');
+      return;
+    }
+
     setLoading(true);
     try {
       // Charger les données en parallèle
@@ -78,7 +93,7 @@ export const useFriends = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user, authLoading]);
 
   const loadFriendsList = useCallback(async () => {
     try {
@@ -220,9 +235,14 @@ export const useFriends = () => {
     loadUsers();
   }, [loadUsers]);
 
+  // ✅ Modifier le useEffect pour ne charger que quand l'utilisateur est authentifié
   useEffect(() => {
-    reload();
-  }, [reload]);
+    // Ne charger les données que si l'utilisateur est connecté et que l'auth n'est plus en cours de chargement
+    if (user && !authLoading) {
+      console.log('🔄 Chargement des données utilisateurs - utilisateur authentifié');
+      reload();
+    }
+  }, [user, authLoading, reload]);
 
   return {
     users,

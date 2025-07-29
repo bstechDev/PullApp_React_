@@ -27,8 +27,24 @@ export default defineConfig({
         target: "http://192.168.1.4:8000",
         changeOrigin: true,
         secure: false,
-        // Pas besoin de réécriture si ton API utilise déjà le préfixe /api
-        // rewrite: (path) => path.replace(/^\/api/, '/api'),
+        // Ajouter des logs pour debugger les requêtes
+        configure: (proxy, options) => {
+          proxy.on("proxyReq", (proxyReq, req) => {
+            console.log(
+              "🔄 Proxy request:",
+              req.method,
+              req.url,
+              "→",
+              options.target + req.url
+            );
+          });
+          proxy.on("proxyRes", (proxyRes, req) => {
+            console.log("✅ Proxy response:", proxyRes.statusCode, req.url);
+          });
+          proxy.on("error", (err, req) => {
+            console.error("❌ Proxy error:", err.message, req.url);
+          });
+        },
       },
       // Proxy pour les fichiers statiques et images
       "/storage": {

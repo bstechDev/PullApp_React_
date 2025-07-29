@@ -4,12 +4,42 @@ import api from "../../../services/api";
 export const friendsService = {
   async getAllUsers(page = 1) {
     try {
+      // ✅ Vérifier l'authentification avant la requête
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        console.log("🔒 Token manquant pour getAllUsers");
+        return {
+          users: {
+            data: [],
+            current_page: 1,
+            last_page: 1,
+            per_page: 15,
+            total: 0,
+          },
+        };
+      }
+
       const response = await api.get(`/users?page=${page}`);
       if (!response.data?.success) {
         throw new Error("Erreur lors de la récupération des utilisateurs");
       }
       return response.data;
     } catch (error) {
+      // ✅ Gérer spécifiquement les erreurs 401
+      if (error.response?.status === 401) {
+        console.log(
+          "🔒 Erreur 401 - Utilisateur non authentifié pour getAllUsers"
+        );
+        return {
+          users: {
+            data: [],
+            current_page: 1,
+            last_page: 1,
+            per_page: 15,
+            total: 0,
+          },
+        };
+      }
       console.error("Erreur getAllUsers:", error.response?.data || error);
       throw error;
     }
@@ -97,9 +127,23 @@ export const friendsService = {
 
   async getPendingFriendRequests() {
     try {
+      // ✅ Vérifier l'authentification avant la requête
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        console.log("🔒 Token manquant pour getPendingFriendRequests");
+        return [];
+      }
+
       const response = await api.get("/friends/pending");
       return response.data.pending_requests || [];
     } catch (error) {
+      // ✅ Gérer spécifiquement les erreurs 401
+      if (error.response?.status === 401) {
+        console.log(
+          "🔒 Erreur 401 - Utilisateur non authentifié pour getPendingFriendRequests"
+        );
+        return [];
+      }
       console.error(
         "Erreur getPendingFriendRequests:",
         error.response?.data || error
