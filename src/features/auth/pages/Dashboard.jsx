@@ -3,8 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import UserStatusManager from '../components/UserStatusManager';
 import IncomingCallIndicator from '../../../components/IncomingCallIndicator';
-import TestCallNotification from '../../../components/TestCallNotification';
-import CallDebugger from '../../../components/CallDebugger';
+
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -74,11 +73,6 @@ const Dashboard = () => {
       {/* 👇 Indicateur d'appel entrant */}
       <IncomingCallIndicator />
       
-      {/* 👇 Composant de test pour les appels entrants */}
-      <TestCallNotification />
-      
-      {/* 👇 Composant de débogage pour les appels */}
-      <CallDebugger />
 
       <div className="min-h-screen bg-gray-100">
         <header className="bg-white shadow-sm sticky top-0 z-10">

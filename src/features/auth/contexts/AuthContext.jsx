@@ -9,49 +9,49 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const checkAuthStatus = async () => {
-      console.log('🔍 AuthContext - Début de checkAuthStatus');
+      // Éviter les appels multiples
+      if (isInitialized) {
+        return;
+      }
+
       try {
         const token = localStorage.getItem('auth_token');
-        console.log('🔍 AuthContext - Token trouvé:', !!token);
         
         if (!token) {
-          console.log('🔍 AuthContext - Pas de token, utilisateur non connecté');
           setUser(null);
+          setIsInitialized(true);
           setLoading(false);
           return;
         }
 
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        console.log('🔍 AuthContext - Tentative de récupération de l\'utilisateur...');
 
         try {
           const response = await authService.getCurrentUser();
-          console.log('🔍 AuthContext - Réponse getCurrentUser:', response);
           
           if (response.data) {
-            console.log('🔍 AuthContext - Données utilisateur récupérées:', response.data);
             setUser(response.data);
             localStorage.setItem('user_data', JSON.stringify(response.data));
           } else {
-            console.log('🔍 AuthContext - Pas de données utilisateur, suppression du token');
             localStorage.removeItem('auth_token');
             delete api.defaults.headers.common['Authorization'];
             setUser(null);
           }
         } catch (error) {
-          console.error('🔍 AuthContext - Erreur lors de la récupération de l\'utilisateur:', error);
           if (error.response?.status === 401 || error.response?.status === 404) {
-            console.log('🔍 AuthContext - Erreur 401/404, suppression du token');
             localStorage.removeItem('auth_token');
             delete api.defaults.headers.common['Authorization'];
             setUser(null);
           }
         }
+      } catch (error) {
+        setUser(null);
       } finally {
-        console.log('🔍 AuthContext - Fin de checkAuthStatus, loading = false');
+        setIsInitialized(true);
         setLoading(false);
       }
     };
@@ -74,7 +74,6 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem('auth_token', token);
       if (userData) {
-        console.log('Stockage des données utilisateur lors du login:', userData);
         localStorage.setItem('user_data', JSON.stringify(userData));
       }
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -104,7 +103,6 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       window.location.href = '/';
     } catch (err) {
-      console.error('Erreur de déconnexion:', err);
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user_data');
       api.defaults.headers.common['Authorization'] = '';
@@ -149,7 +147,6 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await authService.register(userData);
-      // setUser(response.data.user);
       return response.data;
     } catch (err) {
       setError(err.response?.data?.message || 'Une erreur est survenue lors de l\'inscription');

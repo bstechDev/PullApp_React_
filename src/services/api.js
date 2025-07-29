@@ -36,17 +36,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      console.error("Erreur API:", {
-        status: error.response.status,
-        data: error.response.data,
-        url: error.config.url,
-      });
-
-      // Gérer les erreurs d'authentification
+      // Gérer les erreurs d'authentification seulement pour les routes protégées
       if (error.response.status === 401) {
+        // Ne pas rediriger automatiquement, laisser le contexte d'auth gérer
         localStorage.removeItem("auth_token");
         localStorage.removeItem("user_data");
-        window.location.href = "/login";
+
+        // Éviter la redirection automatique qui peut causer des boucles
+        // window.location.href = "/login";
       }
     }
     return Promise.reject(error);

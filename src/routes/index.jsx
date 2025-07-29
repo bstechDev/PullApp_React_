@@ -45,12 +45,8 @@ const ProtectedRoute = ({ children }) => {
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
-  console.log('🔍 PublicRoute - user:', user);
-  console.log('🔍 PublicRoute - loading:', loading);
-  console.log('🔍 PublicRoute - localStorage token:', localStorage.getItem('auth_token'));
-  
+  // Afficher un spinner pendant le chargement initial
   if (loading) {
-    console.log('🔍 PublicRoute - Affichage du spinner de chargement');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -58,12 +54,12 @@ const PublicRoute = ({ children }) => {
     );
   }
   
+  // Si l'utilisateur est connecté, rediriger vers le dashboard
   if (user) {
-    console.log('🔍 PublicRoute - Utilisateur connecté, redirection vers dashboard');
     return <Navigate to="/dashboard" replace />;
   }
   
-  console.log('🔍 PublicRoute - Affichage de la page publique');
+  // Si pas d'utilisateur et pas de chargement, afficher la page publique
   return children;
 };
 

@@ -29,19 +29,6 @@ export default defineConfig({
         secure: false,
         // Pas besoin de réécriture si ton API utilise déjà le préfixe /api
         // rewrite: (path) => path.replace(/^\/api/, '/api'),
-        configure: (proxy) => {
-          proxy.on("error", (err) => {
-            console.log("Erreur de proxy:", err);
-          });
-          proxy.on("proxyReq", (proxyReq, req) => {
-            console.log(`Requête envoyée au backend: ${req.method} ${req.url}`);
-          });
-          proxy.on("proxyRes", (proxyRes, req) => {
-            console.log(
-              `Réponse du backend: ${proxyRes.statusCode} pour ${req.url}`
-            );
-          });
-        },
       },
       // Proxy pour les fichiers statiques et images
       "/storage": {

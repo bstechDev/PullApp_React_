@@ -488,7 +488,7 @@ export const callsService = {
       );
     }
   },
- 
+
   // Rejeter un appel entrant
   async rejectCall(callId) {
     if (!callId) throw new Error("ID de l'appel requis");

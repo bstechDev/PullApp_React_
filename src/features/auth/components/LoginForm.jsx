@@ -8,6 +8,7 @@ const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { login, loading, error } = useAuth();
   const navigate = useNavigate();
@@ -15,6 +16,12 @@ const LoginForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Éviter les soumissions multiples
+    if (isSubmitting || loading) {
+      return;
+    }
+    
     setFormError('');
     
     if (!email || !password) {
@@ -22,11 +29,15 @@ const LoginForm = () => {
       return;
     }
     
+    setIsSubmitting(true);
+    
     try {
       await login({ email, password });
       navigate('/dashboard');
-    } catch {
+    } catch (err) {
       // L'erreur est déjà gérée par le contexte
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -57,7 +68,8 @@ const LoginForm = () => {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
+            disabled={loading || isSubmitting}
+            required
           />
         </div>
         
@@ -71,16 +83,17 @@ const LoginForm = () => {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={loading}
+            disabled={loading || isSubmitting}
+            required
           />
         </div>
         
         <button
           type="submit"
           className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-          disabled={loading}
+          disabled={loading || isSubmitting}
         >
-          {loading ? 'Connexion en cours...' : 'Se connecter'}
+          {loading || isSubmitting ? 'Connexion en cours...' : 'Se connecter'}
         </button>
       </form>
       
