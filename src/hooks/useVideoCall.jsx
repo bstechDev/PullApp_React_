@@ -129,11 +129,8 @@ export const useVideoCall = () => {
     }
   }, []);
 
-  useEffect(() => {
-    // Vérifier les appels entrants toutes les 5 secondes
-    const interval = setInterval(checkIncomingCalls, 5000);
-    return () => clearInterval(interval);
-  }, [checkIncomingCalls]);
+  // Note: Le polling des appels entrants est maintenant géré par GlobalCallWatcher
+  // pour une meilleure intégration et performance
 
   return {
     incomingCall,

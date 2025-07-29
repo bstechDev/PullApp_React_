@@ -440,11 +440,14 @@ export const callsService = {
   // Vérifier les appels entrants
   async checkIncomingCalls() {
     try {
+      console.log("🔍 callsService: Appel à /calls/incoming...");
       const response = await api.get("/calls/incoming");
+      console.log("🔍 callsService: Réponse brute:", response);
 
       // Gérer la structure de réponse de votre API
       const responseData = response.data;
       const actualData = responseData?.data || responseData;
+      console.log("🔍 callsService: Données traitées:", actualData);
 
       return actualData;
     } catch (error) {
@@ -464,11 +467,13 @@ export const callsService = {
     if (!callId) throw new Error("ID de l'appel requis");
 
     try {
-      const response = await api.post(`/call/accept/${callId}`);
+      console.log("🔍 callsService: Acceptation de l'appel avec ID:", callId);
+      const response = await api.post(`/call/join/${callId}`);
 
       // Gérer la structure de réponse de votre API
       const responseData = response.data;
       const actualData = responseData?.data || responseData;
+      console.log("🔍 callsService: Réponse acceptation:", actualData);
 
       return actualData;
     } catch (error) {
@@ -483,7 +488,7 @@ export const callsService = {
       );
     }
   },
-
+ 
   // Rejeter un appel entrant
   async rejectCall(callId) {
     if (!callId) throw new Error("ID de l'appel requis");

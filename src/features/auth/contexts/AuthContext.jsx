@@ -12,36 +12,46 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const checkAuthStatus = async () => {
+      console.log('🔍 AuthContext - Début de checkAuthStatus');
       try {
         const token = localStorage.getItem('auth_token');
+        console.log('🔍 AuthContext - Token trouvé:', !!token);
+        
         if (!token) {
+          console.log('🔍 AuthContext - Pas de token, utilisateur non connecté');
           setUser(null);
           setLoading(false);
           return;
         }
 
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        console.log('🔍 AuthContext - Tentative de récupération de l\'utilisateur...');
 
         try {
           const response = await authService.getCurrentUser();
+          console.log('🔍 AuthContext - Réponse getCurrentUser:', response);
+          
           if (response.data) {
-            console.log('Données utilisateur récupérées dans AuthContext:', response.data);
+            console.log('🔍 AuthContext - Données utilisateur récupérées:', response.data);
             setUser(response.data);
             localStorage.setItem('user_data', JSON.stringify(response.data));
           } else {
+            console.log('🔍 AuthContext - Pas de données utilisateur, suppression du token');
             localStorage.removeItem('auth_token');
             delete api.defaults.headers.common['Authorization'];
             setUser(null);
           }
         } catch (error) {
-          console.error('Erreur lors de la récupération de l\'utilisateur:', error);
+          console.error('🔍 AuthContext - Erreur lors de la récupération de l\'utilisateur:', error);
           if (error.response?.status === 401 || error.response?.status === 404) {
+            console.log('🔍 AuthContext - Erreur 401/404, suppression du token');
             localStorage.removeItem('auth_token');
             delete api.defaults.headers.common['Authorization'];
             setUser(null);
           }
         }
       } finally {
+        console.log('🔍 AuthContext - Fin de checkAuthStatus, loading = false');
         setLoading(false);
       }
     };

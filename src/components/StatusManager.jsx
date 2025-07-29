@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useUserStatusContext } from '../contexts';
+import { useUserStatusContext } from '../contexts/UserStatusContext';
 import { useAuth } from '../features/auth/contexts/AuthContext';
 
 export function StatusManager() {

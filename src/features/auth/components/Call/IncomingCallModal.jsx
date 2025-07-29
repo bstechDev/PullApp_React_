@@ -2,21 +2,29 @@ import React from 'react';
 import { useVideoCall } from '../../../../hooks/useVideoCall';
 import { toast } from 'react-toastify';
 
-export default function IncomingCallModal({ call, onClose }) {
+export default function IncomingCallModal({ call, onClose, onAccept, onDecline }) {
   const { joinCall } = useVideoCall();
 
   const handleAccept = async () => {
-    try {
-      await joinCall(call.call_id);
-      onClose();
-    } catch (error) {
-      toast.error(error.message || "Erreur lors de la connexion à l'appel");
+    if (onAccept) {
+      await onAccept();
+    } else {
+      try {
+        await joinCall(call.call_id);
+        onClose();
+      } catch (error) {
+        toast.error(error.message || "Erreur lors de la connexion à l'appel");
+      }
     }
   };
 
-  const handleDecline = () => {
-    // Ici vous pouvez ajouter une API pour décliner l'appel si nécessaire
-    onClose();
+  const handleDecline = async () => {
+    if (onDecline) {
+      await onDecline();
+    } else {
+      // Ici vous pouvez ajouter une API pour décliner l'appel si nécessaire
+      onClose();
+    }
   };
 
   if (!call) return null;
@@ -32,7 +40,7 @@ export default function IncomingCallModal({ call, onClose }) {
           </div>
           <h2 className="text-xl font-bold mb-2">Appel entrant</h2>
           <p className="text-gray-600">
-            {call.creator.first_name} {call.creator.last_name} vous appelle
+            {call.caller?.first_name} {call.caller?.last_name} vous appelle
           </p>
         </div>
 

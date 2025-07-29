@@ -3,11 +3,10 @@ import { useVideoCall } from "../../../hooks/useVideoCall";
 import { useFriends } from "../../../hooks/useFriends";
 import { callsService } from "../services/callsService";
 import { toast } from "react-toastify";
-import { useAuth } from "../../../hooks/useAuth";
+import { useAuth } from "../contexts/AuthContext";
 
 // Composants
 import CreateCallModal from "../components/CreateCallModal";
-import IncomingCallModal from "../components/Call/IncomingCallModal";
 import UserStatusManager from "../components/UserStatusManager";
 
 
@@ -19,8 +18,8 @@ export default function CallsPage() {
 
   // Utiliser le hook useFriends pour récupérer la liste des amis
   const { friendsList, loading: friendsLoading, reload: reloadFriends } = useFriends();
-  const { incomingCall, clearIncomingCall, initiateCall } = useVideoCall();
-  const auth = useAuth();
+  const { initiateCall } = useVideoCall();
+  const { user } = useAuth();
 
   // Charger les salles actives
   const loadActiveRooms = async () => {
@@ -165,7 +164,7 @@ export default function CallsPage() {
   return (
     <div className="container mx-auto p-6">
       {/* Gestionnaire de statut utilisateur */}
-      <UserStatusManager isEnabled={!!auth?.user?.id} />
+      <UserStatusManager isEnabled={!!user?.id} />
 
       
       <h1 className="text-2xl font-bold mb-8">Appels</h1>
@@ -366,13 +365,6 @@ export default function CallsPage() {
       {/* Modals */}
       {isCreateModalOpen && (
         <CreateCallModal onClose={() => setIsCreateModalOpen(false)} />
-      )}
-
-      {incomingCall && (
-        <IncomingCallModal
-          call={incomingCall}
-          onClose={clearIncomingCall}
-        />
       )}
     </div>
   );

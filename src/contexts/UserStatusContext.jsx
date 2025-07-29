@@ -1,57 +1,71 @@
-import React, { createContext, useContext, useEffect } from 'react';
-import { useUserStatus } from '../hooks/useUserStatus';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '../features/auth/contexts/AuthContext';
 
 const UserStatusContext = createContext(null);
 
-export function UserStatusProvider({ children }) {
+export const UserStatusProvider = ({ children }) => {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { user } = useAuth();
-  const userStatus = useUserStatus();
-  const { setOnline } = userStatus;
 
+  // Fonction pour envoyer un heartbeat
+  const sendHeartbeat = async () => {
+    if (!user?.id) return;
+
+    try {
+      // Ici vous pouvez ajouter une API pour envoyer le statut en ligne
+      // Par exemple : await api.post('/user/heartbeat', { user_id: user.id });
+      console.log('Heartbeat envoyé pour l\'utilisateur:', user.id);
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi du heartbeat:', error);
+    }
+  };
+
+  // Surveiller la connectivité réseau
   useEffect(() => {
-    if (!user) return;
-
-    // Démarrer le statut en ligne au montage de l'app
-    setOnline();
-
-    // Gérer la fermeture de l'onglet/navigateur
-    const handleBeforeUnload = () => {
-      // Utiliser sendBeacon pour une requête fiable à la fermeture
-      navigator.sendBeacon('/api/status/offline');
+    const handleOnline = () => {
+      setIsOnline(true);
+      console.log('Utilisateur en ligne');
     };
 
-    // Gérer la perte de visibilité de la page
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // Page cachée - ne pas appeler setOffline
-        // Le système utilisera last_seen pour déterminer le statut
-      } else {
-        // Page visible - envoyer un heartbeat
-        setOnline();
-      }
+    const handleOffline = () => {
+      setIsOnline(false);
+      console.log('Utilisateur hors ligne');
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
-  }, [user, setOnline]);
+  }, []);
+
+  // Envoyer un heartbeat périodique si l'utilisateur est connecté et en ligne
+  useEffect(() => {
+    if (!user?.id || !isOnline) return;
+
+    const interval = setInterval(sendHeartbeat, 30000); // Toutes les 30 secondes
+
+    return () => clearInterval(interval);
+  }, [user?.id, isOnline]);
+
+  const value = {
+    isOnline,
+    sendHeartbeat,
+  };
 
   return (
-    <UserStatusContext.Provider value={userStatus}>
+    <UserStatusContext.Provider value={value}>
       {children}
     </UserStatusContext.Provider>
   );
-}
+};
 
-export function useUserStatusContext() {
+export const useUserStatusContext = () => {
   const context = useContext(UserStatusContext);
   if (!context) {
-    throw new Error('useUserStatusContext doit être utilisé à l\'intérieur d\'un UserStatusProvider');
+    throw new Error('useUserStatusContext doit être utilisé dans un UserStatusProvider');
   }
   return context;
-} 
+}; 

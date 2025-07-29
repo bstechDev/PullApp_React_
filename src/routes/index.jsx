@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/contexts/AuthContext';
 
 // Layouts
@@ -22,36 +22,11 @@ import Settings from '../features/auth/pages/Settings';
 import Friends from '../features/auth/pages/Friends';
 import Calls from '../features/auth/pages/Calls'; 
 
-// Route protégée qui vérifie si l'utilisateur est connecté
+// Route protégée simplifiée
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const [tokenCheckComplete, setTokenCheckComplete] = useState(false);
   
-  useEffect(() => {
-    const checkToken = async () => {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        navigate('/login', { replace: true });
-        setTokenCheckComplete(true);
-        return;
-      }
-      
-      // Si le chargement est terminé, on a soit un utilisateur, soit une erreur
-      if (!loading) {
-        setTokenCheckComplete(true);
-        if (!user) {
-          // Si pas d'utilisateur après chargement, rediriger vers login
-          navigate('/login');
-        }
-      }
-    };
-    
-    checkToken();
-  }, [user, loading, navigate]);
-
-  // Afficher le spinner seulement pendant la vérification initiale
-  if (loading && !tokenCheckComplete) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -59,38 +34,43 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  // Si on a un utilisateur ou si le token est valide, afficher les enfants
-  if (user) {
-    return children;
+  if (!user) {
+    return <Navigate to="/login" replace />;
   }
 
-  // Redirection gérée dans l'effet, on retourne null en attendant
-  return null;
-};
-
-// Route publique
-const PublicRoute = ({ children }) => {
-  const auth = useAuth();
-  const { user, loading } = auth || { user: null, loading: true };
-  
-  if (loading) {
-    return <div>Chargement...</div>;
-  }
-  
-  if (user) {
-    return <Navigate to="/dashboard" />;
-  }
-  
   return children;
 };
 
-import { StatusManager } from '../components/StatusManager';
+// Route publique simplifiée
+const PublicRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  console.log('🔍 PublicRoute - user:', user);
+  console.log('🔍 PublicRoute - loading:', loading);
+  console.log('🔍 PublicRoute - localStorage token:', localStorage.getItem('auth_token'));
+  
+  if (loading) {
+    console.log('🔍 PublicRoute - Affichage du spinner de chargement');
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+  
+  if (user) {
+    console.log('🔍 PublicRoute - Utilisateur connecté, redirection vers dashboard');
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  console.log('🔍 PublicRoute - Affichage de la page publique');
+  return children;
+};
 
-// Dans votre composant de routage
+// Composant de routage principal
 export default function AppRoutes() {
   return (
     <BrowserRouter>
-      <StatusManager /> {/* Ajout du gestionnaire de statut */}
       <Routes>
         {/* Routes publiques */}
         <Route element={<AuthLayout />}>
@@ -133,7 +113,7 @@ export default function AppRoutes() {
           {/* Sous-routes du Dashboard */}
           <Route path="messages" element={<Messages />} />
           <Route path="messages/:receiverId" element={<Messages />} />
-          <Route path="calls" element={<Calls />} /> {/* 👈 Nouvelle route */}
+          <Route path="calls" element={<Calls />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="friends" element={<Friends />} />
           <Route path="profile" element={<Profile />} />

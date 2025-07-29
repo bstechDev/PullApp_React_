@@ -1,0 +1,19 @@
+# Fichier son de notification pour les appels entrants
+# 
+# Ce fichier devrait contenir un son MP3 de notification
+# 
+# Recommandations :
+# - Format : MP3
+# - Durée : 2-3 secondes
+# - Fréquence : 800-1000 Hz
+# - Volume : Modéré (pas trop fort)
+# 
+# Si ce fichier n'existe pas, le système génère automatiquement
+# un bip sonore via l'API Web Audio
+# 
+# Exemples de sons appropriés :
+# - Son de téléphone classique
+# - Bip de notification moderne
+# - Son de cloche doux
+# 
+# Placez votre fichier audio ici et nommez-le "notification.mp3" 
