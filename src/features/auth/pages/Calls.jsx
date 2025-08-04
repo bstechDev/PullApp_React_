@@ -77,17 +77,10 @@ export default function CallsPage() {
     }
   };
 
-  // Polling pour mettre à jour les salles actives
+  // Chargement initial des salles actives
   useEffect(() => {
     loadActiveRooms();
     reloadFriends(); // Charger la liste des amis au montage
-
-    // Mettre à jour les salles actives toutes les 10 secondes
-    const interval = setInterval(() => {
-      loadActiveRooms();
-    }, 10000); // 10 secondes
-
-    return () => clearInterval(interval);
   }, [reloadFriends]);
 
   const handleDirectCall = async (friendId) => {
@@ -188,15 +181,9 @@ export default function CallsPage() {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-lg font-semibold">Appel direct</h2>
-            <button
-              onClick={reloadFriends}
-              className="text-blue-500 hover:text-blue-600 p-1"
-              title="Rafraîchir la liste"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
+            <div className="text-green-600 text-sm">
+              🟢 Temps réel
+            </div>
           </div>
           <p className="text-gray-600 text-sm mb-4">
             Démarrer un appel vidéo avec un ami

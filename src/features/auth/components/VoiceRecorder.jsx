@@ -57,7 +57,8 @@ const VoiceRecorder = ({ onSend, onCancel }) => {
       setRecordTime(0);
       setAudioBlob(null);
       setAudioUrl(null);
-      intervalRef.current = setInterval(() => setRecordTime(prev => prev + 1), 1000);
+      // Timer pour l'enregistrement vocal (gardé car nécessaire pour l'UI)
+    intervalRef.current = setInterval(() => setRecordTime(prev => prev + 1), 1000);
     } catch (err) {
       console.error("Erreur lors de l'enregistrement vocal:", err);
       setError("Impossible d'accéder au microphone. Vérifiez les permissions ou utilisez un navigateur compatible.");

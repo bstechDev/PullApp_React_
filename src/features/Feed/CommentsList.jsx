@@ -6,13 +6,11 @@ const CommentsList = ({ postId, newComment, onCommentUpdate, onCommentDelete, on
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
   useEffect(() => {
     if (postId) {
       fetchComments();
     }
-  }, [postId, refreshTrigger]);
+  }, [postId]);
 
   useEffect(() => {
     if (newComment && newComment.post_id === postId) {
@@ -129,10 +127,8 @@ const CommentsList = ({ postId, newComment, onCommentUpdate, onCommentDelete, on
     });
   }, [onCommentsCountChange]);
 
-  const handleForceRefresh = useCallback(() => {
-    console.log('Rechargement forcé des commentaires');
-    setRefreshTrigger(prev => prev + 1);
-  }, []);
+  // Pusher gère maintenant les mises à jour automatiques
+  console.log('CommentsList: Utilisation de Pusher pour les commentaires');
 
   if (loading && comments.length === 0) {
     return (
@@ -147,12 +143,9 @@ const CommentsList = ({ postId, newComment, onCommentUpdate, onCommentDelete, on
     return (
       <div className="py-2 text-center">
         <p className="text-sm text-red-500">{error}</p>
-        <button 
-          className="text-sm text-blue-500 hover:underline mt-1"
-          onClick={handleForceRefresh}
-        >
-          Réessayer
-        </button>
+        <p className="text-sm text-gray-500 mt-1">
+          Les commentaires se mettent à jour automatiquement
+        </p>
       </div>
     );
   }
@@ -204,12 +197,9 @@ const CommentsList = ({ postId, newComment, onCommentUpdate, onCommentDelete, on
       })}
       
       <div className="text-center mt-4">
-        <button 
-          onClick={handleForceRefresh}
-          className="text-xs text-blue-500 hover:underline"
-        >
-          Actualiser les commentaires
-        </button>
+        <p className="text-xs text-green-500">
+          🟢 Mise à jour automatique
+        </p>
       </div>
     </div>
   );

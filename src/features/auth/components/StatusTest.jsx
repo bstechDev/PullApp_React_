@@ -39,12 +39,9 @@ const StatusTest = () => {
     fetchMyStatus();
     fetchFriendsStatuses();
 
-    const interval = setInterval(() => {
-      fetchMyStatus();
-      fetchFriendsStatuses();
-    }, 30_000); // toutes les 30s
-
-    return () => clearInterval(interval);
+    // Pusher gère maintenant les mises à jour de statut en temps réel
+    // Plus besoin de polling toutes les 30 secondes
+    console.log('StatusTest: Utilisation de Pusher pour les statuts');
   }, [user]);
 
   return (

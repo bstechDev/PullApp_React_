@@ -271,13 +271,9 @@ const Friends = () => {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Une erreur est survenue</h3>
           <p className="text-red-600 mb-6">{error}</p>
-          <button
-            onClick={reload}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 flex items-center space-x-2 mx-auto"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Réessayer</span>
-          </button>
+          <p className="text-gray-500 text-sm">
+            Les amis se mettent à jour automatiquement
+          </p>
         </div>
       </div>
     );
@@ -350,13 +346,9 @@ const Friends = () => {
                       </div>
                     )}
                   </button>
-                  <button 
-                    onClick={reload}
-                    className="p-2 sm:p-3 bg-gray-100 rounded-lg border border-gray-200 hover:bg-gray-200 transition-all duration-200 group"
-                    title="Actualiser"
-                  >
-                    <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 group-hover:rotate-180 transition-transform duration-500" />
-                  </button>
+                  <div className="p-2 sm:p-3 bg-green-100 rounded-lg border border-green-200">
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 animate-pulse">🟢</div>
+                  </div>
                 </div>
               </div>
 

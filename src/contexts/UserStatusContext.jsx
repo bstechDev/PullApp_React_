@@ -45,9 +45,9 @@ export const UserStatusProvider = ({ children }) => {
   useEffect(() => {
     if (!user?.id || !isOnline) return;
 
-    const interval = setInterval(sendHeartbeat, 30000); // Toutes les 30 secondes
-
-    return () => clearInterval(interval);
+    // Le heartbeat est maintenant géré par UserStatusManager
+    // Pusher gère les mises à jour de statut en temps réel
+    console.log('UserStatusContext: Utilisation de Pusher pour les statuts');
   }, [user?.id, isOnline]);
 
   const value = {

@@ -6,18 +6,9 @@ export default function FriendCallWatcher({ userId }) {
   const [incomingCall, setIncomingCall] = useState(null);
 
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const call = await callsService.getCurrentIncomingCall(userId); // crée cette méthode
-        if (call && call.status === 'ringing') {
-          setIncomingCall(call);
-        }
-      } catch (error) {
-        console.error("Erreur vérification appel entrant", error);
-      }
-    }, 5000); // toutes les 5 secondes
-
-    return () => clearInterval(interval);
+    // Le FriendCallWatcher n'est plus nécessaire avec Pusher
+    // Les appels sont maintenant gérés par GlobalCallWatcher via Pusher
+    console.log('FriendCallWatcher: Utilisation de Pusher pour les appels');
   }, [userId]);
 
   if (!incomingCall) return null;

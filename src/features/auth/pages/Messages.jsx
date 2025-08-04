@@ -7,11 +7,22 @@ import ConversationPanel from '../components/ConversationPanel';
 import { RefreshCw } from 'lucide-react';
 import UserStatusManager from '../components/UserStatusManager';
 import api from '../../../services/api'; // Pour appels API statuts
+// Outils de débogage temporaires - à supprimer plus tard
+import DebugInfo from '../../../components/DebugInfo';
+import TestFriends from '../../../components/TestFriends';
+import ForceConversations from '../../../components/ForceConversations';
+import TestSendMessage from '../../../components/TestSendMessage';
+import SimpleTestSendMessage from '../../../components/SimpleTestSendMessage';
+import ForceDisplayConversations from '../../../components/ForceDisplayConversations';
+import QuickTest from '../../../components/QuickTest';
+import ForceLoadConversations from '../../../components/ForceLoadConversations';
 
 const Messages = () => {
   const { receiverId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // Logs de débogage réduits
 
   const {
     conversations,
@@ -78,23 +89,22 @@ const Messages = () => {
     }
   };
 
-  // Initialisation + refresh périodique
+  // Initialisation des statuts utilisateurs
   useEffect(() => {
     fetchUserStatuses();
-    const interval = setInterval(fetchUserStatuses, 30000);
-    return () => clearInterval(interval);
   }, []);
 
-  // Chargement de la conversation
+  // Chargement de la conversation - Optimisé avec cache
   useEffect(() => {
-    if (receiverId && !selectedConversation && conversations.length > 0) {
+    if (receiverId && conversations.length > 0) {
       const conv = conversations.find(c => c.friend.id === parseInt(receiverId));
       if (conv) {
         setSelectedConversation(conv);
+        // Charger les messages (sera instantané si en cache)
         loadMessages(receiverId);
       }
     }
-  }, [receiverId, conversations, selectedConversation, loadMessages, setSelectedConversation]);
+  }, [receiverId, conversations, loadMessages]);
 
   // Scroll lors de nouveaux messages
   useEffect(() => {
@@ -142,18 +152,15 @@ const Messages = () => {
     setIsSidebarOpen(false); // Fermer la sidebar après sélection sur mobile
   };
 
-  if (loading) {
+  if (loading && conversations.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-8 text-center">
           <RefreshCw className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-600 text-lg">Chargement des conversations...</p>
-          <button
-            onClick={reload}
-            className="mt-4 px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600"
-          >
-            Recharger
-          </button>
+          <p className="text-gray-500 text-sm mt-4">
+            Les messages se mettent à jour automatiquement
+          </p>
         </div>
       </div>
     );
@@ -166,13 +173,9 @@ const Messages = () => {
           <RefreshCw className="w-8 h-8 text-red-600 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Une erreur est survenue</h3>
           <p className="text-red-600 mb-6">{error}</p>
-          <button
-            onClick={reload}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 flex items-center space-x-2 mx-auto"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Réessayer</span>
-          </button>
+          <p className="text-gray-500 text-sm">
+            Les messages se mettent à jour automatiquement
+          </p>
         </div>
       </div>
     );
@@ -181,6 +184,15 @@ const Messages = () => {
   return (
     <>
       <UserStatusManager isEnabled={!!user?.id} />
+      {/* Outils de débogage temporaires - à supprimer plus tard */}
+      <DebugInfo />
+      <TestFriends />
+      <ForceConversations />
+      <TestSendMessage />
+      <SimpleTestSendMessage />
+      <ForceDisplayConversations />
+      <QuickTest />
+      <ForceLoadConversations />
       <div className="h-screen flex flex-col md:flex-row">
         {/* Toggle button for mobile */}
         <button
@@ -201,32 +213,41 @@ const Messages = () => {
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             handleSelectConversation={handleSelectConversation}
-            reload={reload}
+
             userStatuses={userStatuses}
             lastSeen={lastSeen}
           />
         </div>
         {/* Conversation Panel */}
         <div className="flex-1">
-          <ConversationPanel
-            selectedConversation={selectedConversation}
-            messages={messages}
-            messagesEndRef={messagesEndRef}
-            showVoiceRecorder={showVoiceRecorder}
-            setShowVoiceRecorder={setShowVoiceRecorder}
-            messageContent={messageContent}
-            setMessageContent={setMessageContent}
-            file={file}
-            setFile={setFile}
-            handleSendMessage={handleSendMessage}
-            handleSendVoiceMessage={handleSendVoiceMessage}
-            handleFileChange={handleFileChange}
-            downloadFile={downloadFile}
-            isMyMessage={isMyMessage}
-            showToast={showToast}
-            userStatuses={userStatuses}
-            lastSeen={lastSeen}
-          />
+          {loading && messages.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <RefreshCw className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">Chargement des messages...</p>
+              </div>
+            </div>
+          ) : (
+            <ConversationPanel
+              selectedConversation={selectedConversation}
+              messages={messages}
+              messagesEndRef={messagesEndRef}
+              showVoiceRecorder={showVoiceRecorder}
+              setShowVoiceRecorder={setShowVoiceRecorder}
+              messageContent={messageContent}
+              setMessageContent={setMessageContent}
+              file={file}
+              setFile={setFile}
+              handleSendMessage={handleSendMessage}
+              handleSendVoiceMessage={handleSendVoiceMessage}
+              handleFileChange={handleFileChange}
+              downloadFile={downloadFile}
+              isMyMessage={isMyMessage}
+              showToast={showToast}
+              userStatuses={userStatuses}
+              lastSeen={lastSeen}
+            />
+          )}
         </div>
       </div>
     </>

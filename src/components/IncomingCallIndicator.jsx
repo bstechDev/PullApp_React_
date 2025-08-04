@@ -1,54 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../features/auth/contexts/AuthContext';
-import { callsService } from '../features/auth/services/callsService';
 import { useFriends } from '../hooks/useFriends';
+import { useCalls } from '../hooks/useCalls';
 
 export default function IncomingCallIndicator() {
   const [hasIncomingCall, setHasIncomingCall] = useState(false);
   const [callerName, setCallerName] = useState('');
   const { user } = useAuth();
   const { friendsList } = useFriends();
+  const { incomingCalls, getLatestIncomingCall } = useCalls(user?.id);
 
-  // Vérifier les appels entrants
-  const checkIncomingCalls = async () => {
-    if (!user?.id) return;
-
-    try {
-      const response = await callsService.checkIncomingCalls();
-      
-      if (response?.call && Array.isArray(friendsList)) {
-        const caller = friendsList.find(friend => friend.id === response.call.caller_id);
-        
-        if (caller) {
-          setHasIncomingCall(true);
-          setCallerName(`${caller.first_name} ${caller.last_name}`);
-        } else {
-          setHasIncomingCall(false);
-          setCallerName('');
-        }
-      } else {
-        setHasIncomingCall(false);
-        setCallerName('');
-      }
-    } catch (error) {
-      console.error('Erreur lors de la vérification des appels entrants:', error);
+  // Gérer les appels entrants via Pusher
+  const handleNewCall = (callData) => {
+    if (!Array.isArray(friendsList)) return;
+    
+    const caller = callData.caller;
+    
+    if (caller) {
+      setHasIncomingCall(true);
+      setCallerName(`${caller.first_name} ${caller.last_name}`);
     }
   };
 
-  // Polling pour vérifier les appels entrants
+  // Écouter les appels entrants via Pusher
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !incomingCalls.length) return;
 
-    // Vérification immédiate
-    checkIncomingCalls();
-
-    // Polling toutes les 3 secondes
-    const interval = setInterval(checkIncomingCalls, 3000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [user?.id, friendsList]);
+    const latestCall = getLatestIncomingCall();
+    if (latestCall) {
+      handleNewCall(latestCall);
+    }
+  }, [user?.id, incomingCalls, getLatestIncomingCall]);
 
   // Nettoyer quand l'utilisateur se déconnecte
   useEffect(() => {

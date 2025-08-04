@@ -4,12 +4,13 @@ import { callsService } from '../features/auth/services/callsService';
 import { useFriends } from '../hooks/useFriends';
 import IncomingCallModal from '../features/auth/components/Call/IncomingCallModal';
 import { toast } from 'react-toastify';
+import { useCalls } from '../hooks/useCalls';
 
 export default function GlobalCallWatcher() {
   const [incomingCall, setIncomingCall] = useState(null);
-  const [isChecking, setIsChecking] = useState(false);
   const { user } = useAuth();
   const { friendsList } = useFriends();
+  const { incomingCalls, getLatestIncomingCall } = useCalls(user?.id);
   
   // ✅ Référence pour stocker l'ID du toast actuel
   const currentToastId = useRef(null);
@@ -22,90 +23,65 @@ export default function GlobalCallWatcher() {
     }
   };
 
-  // Fonction pour vérifier les appels entrants
-  const checkIncomingCalls = async () => {
-    if (!user?.id || isChecking) return;
-
-    setIsChecking(true);
-    try {
-      const response = await callsService.checkIncomingCalls();
+  // Fonction pour gérer un nouvel appel entrant via Pusher
+  const handleNewCall = (callData) => {
+    if (!Array.isArray(friendsList)) return;
+    
+    const caller = callData.caller;
+    
+    if (caller) {
+      console.log('📞 Nouvel appel entrant reçu via Pusher:', callData);
+      setIncomingCall(callData);
       
-      if (response?.call && Array.isArray(friendsList)) {
-        // L'API retourne directement l'objet caller, pas caller_id
-        const caller = response.call.caller;
+      // ✅ Fermer le toast précédent s'il existe
+      dismissCurrentToast();
+      
+      // ✅ Vérifier qu'aucun toast n'est déjà affiché avant d'en créer un nouveau
+      if (!currentToastId.current) {
+        // Jouer un son de notification
+        try {
+          const audio = new Audio('/sounds/notification.mp3');
+          audio.play().catch(() => {
+            // Si le fichier son n'existe pas, on utilise l'API Web Audio pour générer un bip
+            console.log('Fichier son non trouvé, génération d\'un bip...');
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+          });
+        } catch (error) {
+          console.error('Erreur lors de la lecture du son:', error);
+        }
         
-        if (caller) {
-          const callData = {
-            ...response.call,
-            caller: caller
-          };
-          
-          // Vérifier si c'est un nouvel appel (pas le même que celui déjà affiché)
-          if (!incomingCall || incomingCall.id !== callData.id) {
-            console.log('📞 Nouvel appel entrant détecté:', callData);
-            setIncomingCall(callData);
-            
-            // ✅ Fermer le toast précédent s'il existe
-            dismissCurrentToast();
-            
-            // ✅ Vérifier qu'aucun toast n'est déjà affiché avant d'en créer un nouveau
-            if (!currentToastId.current) {
-              // Jouer un son de notification
-              try {
-                const audio = new Audio('/sounds/notification.mp3');
-                audio.play().catch(() => {
-                  // Si le fichier son n'existe pas, on utilise l'API Web Audio pour générer un bip
-                  console.log('Fichier son non trouvé, génération d\'un bip...');
-                  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                  const oscillator = audioContext.createOscillator();
-                  const gainNode = audioContext.createGain();
-                  
-                  oscillator.connect(gainNode);
-                  gainNode.connect(audioContext.destination);
-                  
-                  oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                  oscillator.type = 'sine';
-                  
-                  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                  
-                  oscillator.start(audioContext.currentTime);
-                  oscillator.stop(audioContext.currentTime + 0.5);
-                });
-              } catch (error) {
-                console.error('Erreur lors de la lecture du son:', error);
-              }
-              
-              // ✅ Créer une nouvelle notification toast avec auto-close
-              const toastId = toast.info(`Appel entrant de ${caller.first_name} ${caller.last_name}`, {
-                position: "top-center",
-                autoClose: 10000, // ✅ Fermer automatiquement après 10 secondes
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-                onClose: () => {
-                  // ✅ Nettoyer la référence quand le toast se ferme
-                  if (currentToastId.current === toastId) {
-                    currentToastId.current = null;
-                  }
-                }
-              });
-              
-              // ✅ Stocker l'ID du toast actuel
-              currentToastId.current = toastId;
+        // ✅ Créer une nouvelle notification toast avec auto-close
+        const toastId = toast.info(`Appel entrant de ${caller.first_name} ${caller.last_name}`, {
+          position: "top-center",
+          autoClose: 10000, // ✅ Fermer automatiquement après 10 secondes
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          onClose: () => {
+            // ✅ Nettoyer la référence quand le toast se ferme
+            if (currentToastId.current === toastId) {
+              currentToastId.current = null;
             }
           }
-        }
-      } else if (incomingCall) {
-        // Si pas d'appel entrant mais qu'on en avait un affiché, le retirer
-        setIncomingCall(null);
-        // ✅ Fermer le toast quand l'appel n'existe plus
-        dismissCurrentToast();
+        });
+        
+        // ✅ Stocker l'ID du toast actuel
+        currentToastId.current = toastId;
       }
-    } catch (error) {
-      console.error('Erreur lors de la vérification des appels entrants:', error);
-    } finally {
-      setIsChecking(false);
     }
   };
 
@@ -152,20 +128,15 @@ export default function GlobalCallWatcher() {
     dismissCurrentToast();
   };
 
-  // Polling pour vérifier les appels entrants
+  // Écouter les appels entrants via Pusher
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !incomingCalls.length) return;
 
-    // Vérification immédiate au montage
-    checkIncomingCalls();
-
-    // Polling toutes les 3 secondes
-    const interval = setInterval(checkIncomingCalls, 3000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [user?.id, friendsList]);
+    const latestCall = getLatestIncomingCall();
+    if (latestCall && latestCall.id !== incomingCall?.id) {
+      handleNewCall(latestCall);
+    }
+  }, [user?.id, incomingCalls, getLatestIncomingCall, incomingCall?.id]);
 
   // Nettoyer l'appel entrant quand l'utilisateur se déconnecte
   useEffect(() => {
