@@ -83,7 +83,6 @@ export const useFriends = () => {
         
         // Mettre à jour la liste des amis
         const friends = updatedUsers.filter(user => user.friendship_status === 'friends');
-        console.log('👥 Amis trouvés:', friends.length, 'sur', updatedUsers.length, 'utilisateurs');
         setFriendsList(friends);
         
         // Sauvegarder la liste d'amis dans le localStorage pour récupération ultérieure

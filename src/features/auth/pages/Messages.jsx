@@ -2,27 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { useMessages } from '../../../hooks/useMessages';
+import { usePusher } from '../../../hooks/usePusher';
 import MessageList from '../components/MessageList';
 import ConversationPanel from '../components/ConversationPanel';
 import { RefreshCw } from 'lucide-react';
 import UserStatusManager from '../components/UserStatusManager';
+import PusherTest from '../../../components/PusherTest';
 import api from '../../../services/api'; // Pour appels API statuts
-// Outils de débogage temporaires - à supprimer plus tard
-import DebugInfo from '../../../components/DebugInfo';
-import TestFriends from '../../../components/TestFriends';
-import ForceConversations from '../../../components/ForceConversations';
-import TestSendMessage from '../../../components/TestSendMessage';
-import SimpleTestSendMessage from '../../../components/SimpleTestSendMessage';
-import ForceDisplayConversations from '../../../components/ForceDisplayConversations';
-import QuickTest from '../../../components/QuickTest';
-import ForceLoadConversations from '../../../components/ForceLoadConversations';
 
 const Messages = () => {
   const { receiverId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-
-  // Logs de débogage réduits
 
   const {
     conversations,
@@ -37,8 +28,12 @@ const Messages = () => {
     loadMessages,
     downloadFile,
     isMyMessage,
+    addNewMessage,
     reload,
   } = useMessages(receiverId);
+
+  // Hook Pusher pour les messages en temps réel
+  const { listenToMessages } = usePusher(user?.id);
 
   const [messageContent, setMessageContent] = useState('');
   const [file, setFile] = useState(null);
@@ -94,22 +89,72 @@ const Messages = () => {
     fetchUserStatuses();
   }, []);
 
-  // Chargement de la conversation - Optimisé avec cache
+  // Chargement de la conversation
   useEffect(() => {
     if (receiverId && conversations.length > 0) {
       const conv = conversations.find(c => c.friend.id === parseInt(receiverId));
-      if (conv) {
+      if (conv && (!selectedConversation || selectedConversation.friend.id !== parseInt(receiverId))) {
         setSelectedConversation(conv);
-        // Charger les messages (sera instantané si en cache)
         loadMessages(receiverId);
       }
     }
-  }, [receiverId, conversations, loadMessages]);
+  }, [receiverId, conversations, selectedConversation, loadMessages, setSelectedConversation]);
 
   // Scroll lors de nouveaux messages
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Écouter les nouveaux messages via Pusher
+  useEffect(() => {
+    if (!user?.id) {
+      console.log('🚫 Pas d\'utilisateur connecté, arrêt de l\'écoute Pusher');
+      return;
+    }
+
+    console.log('🔌 Démarrage de l\'écoute Pusher pour l\'utilisateur:', user.id);
+    
+    listenToMessages((data) => {
+      console.log('📨 Nouveau message reçu via Pusher:', data);
+      
+      // Ajouter le nouveau message à la liste des messages
+      const newMessage = data.message;
+      
+      // Utiliser la fonction addNewMessage du hook useMessages
+      addNewMessage(newMessage);
+      
+      // Afficher une notification si la conversation n'est pas sélectionnée
+      if (!selectedConversation || selectedConversation.friend.id !== newMessage.sender_id) {
+        showToast(`Nouveau message de ${data.sender_name || 'quelqu\'un'}`, 'info');
+      }
+    });
+  }, [user?.id, listenToMessages, selectedConversation, addNewMessage]);
+
+  // Écouter les événements de test (temporaire)
+  useEffect(() => {
+    const handleTestMessage = (event) => {
+      console.log('🧪 TEST - Événement de test reçu:', event.detail);
+      
+      if (event.detail.type === 'test-message') {
+        const data = event.detail.data;
+        const newMessage = data.message;
+        
+        // Utiliser la fonction addNewMessage du hook useMessages
+        addNewMessage(newMessage);
+        
+        // Afficher une notification si la conversation n'est pas sélectionnée
+        if (!selectedConversation || selectedConversation.friend.id !== newMessage.sender_id) {
+          showToast(`Nouveau message de ${data.sender_name || 'quelqu\'un'}`, 'info');
+        }
+      }
+    };
+
+    window.addEventListener('test-message', handleTestMessage);
+    
+    return () => {
+      window.removeEventListener('test-message', handleTestMessage);
+    };
+  }, [selectedConversation, addNewMessage]);
 
   const handleSendMessage = async () => {
     if (!selectedConversation || (!messageContent.trim() && !file)) return;
@@ -148,10 +193,19 @@ const Messages = () => {
   };
 
   const handleSelectConversation = (friendId) => {
+    // Trouver la conversation immédiatement
+    const conv = conversations.find(c => c.friend.id === friendId);
+    if (conv) {
+      setSelectedConversation(conv);
+      loadMessages(friendId);
+    }
+    
+    // Navigation après avoir défini la conversation
     navigate(`/dashboard/messages/${friendId}`);
     setIsSidebarOpen(false); // Fermer la sidebar après sélection sur mobile
   };
 
+  // Loading uniquement pour le chargement initial des conversations
   if (loading && conversations.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -184,15 +238,7 @@ const Messages = () => {
   return (
     <>
       <UserStatusManager isEnabled={!!user?.id} />
-      {/* Outils de débogage temporaires - à supprimer plus tard */}
-      <DebugInfo />
-      <TestFriends />
-      <ForceConversations />
-      <TestSendMessage />
-      <SimpleTestSendMessage />
-      <ForceDisplayConversations />
-      <QuickTest />
-      <ForceLoadConversations />
+      <PusherTest />
       <div className="h-screen flex flex-col md:flex-row">
         {/* Toggle button for mobile */}
         <button
@@ -220,34 +266,25 @@ const Messages = () => {
         </div>
         {/* Conversation Panel */}
         <div className="flex-1">
-          {loading && messages.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <RefreshCw className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-2" />
-                <p className="text-gray-500 text-sm">Chargement des messages...</p>
-              </div>
-            </div>
-          ) : (
-            <ConversationPanel
-              selectedConversation={selectedConversation}
-              messages={messages}
-              messagesEndRef={messagesEndRef}
-              showVoiceRecorder={showVoiceRecorder}
-              setShowVoiceRecorder={setShowVoiceRecorder}
-              messageContent={messageContent}
-              setMessageContent={setMessageContent}
-              file={file}
-              setFile={setFile}
-              handleSendMessage={handleSendMessage}
-              handleSendVoiceMessage={handleSendVoiceMessage}
-              handleFileChange={handleFileChange}
-              downloadFile={downloadFile}
-              isMyMessage={isMyMessage}
-              showToast={showToast}
-              userStatuses={userStatuses}
-              lastSeen={lastSeen}
-            />
-          )}
+          <ConversationPanel
+            selectedConversation={selectedConversation}
+            messages={messages}
+            messagesEndRef={messagesEndRef}
+            showVoiceRecorder={showVoiceRecorder}
+            setShowVoiceRecorder={setShowVoiceRecorder}
+            messageContent={messageContent}
+            setMessageContent={setMessageContent}
+            file={file}
+            setFile={setFile}
+            handleSendMessage={handleSendMessage}
+            handleSendVoiceMessage={handleSendVoiceMessage}
+            handleFileChange={handleFileChange}
+            downloadFile={downloadFile}
+            isMyMessage={isMyMessage}
+            showToast={showToast}
+            userStatuses={userStatuses}
+            lastSeen={lastSeen}
+          />
         </div>
       </div>
     </>

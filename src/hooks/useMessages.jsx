@@ -12,15 +12,10 @@ export const useMessages = (receiverId = null) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [messagesCache, setMessagesCache] = useState(new Map()); // Cache pour les messages
-  const [conversationsLoading, setConversationsLoading] = useState(false);
+  const [messagesCache, setMessagesCache] = useState(new Map()); // Cache des messages par conversation
 
   const loadConversations = useCallback(async () => {
-    console.log('🔄 loadConversations appelé');
-    if (!user || friendsLoading) {
-      console.log('❌ loadConversations annulé: user ou friendsLoading manquant');
-      return;
-    }
+    if (!user || friendsLoading) return;
 
     let actualFriendsList = [];
     if (Array.isArray(friendsList)) {
@@ -40,18 +35,12 @@ export const useMessages = (receiverId = null) => {
       return;
     }
 
-    // Créer des conversations avec historique de messages
-    setConversationsLoading(true);
+    setLoading(true);
     try {
       const conversationPromises = friendsToUse.map(async (friend) => {
         try {
           const history = await messagesService.getMessageHistory(friend.id);
-          
           const unreadCount = history.filter(msg => !msg.is_read && msg.sender_id === friend.id).length;
-          
-          // Mettre en cache les messages pour chaque conversation
-          setMessagesCache(prev => new Map(prev.set(friend.id, history)));
-          
           return {
             friend,
             lastMessage: history.length > 0 ? history[history.length - 1] : null,
@@ -59,7 +48,6 @@ export const useMessages = (receiverId = null) => {
           };
         } catch (err) {
           console.error(`Erreur pour l'ami ${friend.id}:`, err);
-          // Retourner quand même une conversation même sans historique
           return {
             friend,
             lastMessage: null,
@@ -71,42 +59,35 @@ export const useMessages = (receiverId = null) => {
       const convs = await Promise.all(conversationPromises);
       setConversations(convs);
     } catch (err) {
-      console.error('❌ Erreur globale loadConversations:', err);
       setError('Erreur lors du chargement des conversations');
+      console.error('Erreur globale loadConversations:', err);
     } finally {
-      setConversationsLoading(false);
+      setLoading(false);
     }
   }, [user, friendsList, friendsLoading]);
 
   const loadMessages = useCallback(async (id) => {
     if (!user || !id) return;
     
-    // Vérifier d'abord le cache
-    const cachedMessages = messagesCache.get(id);
-    if (cachedMessages) {
-      setMessages(cachedMessages);
-      // Marquer comme lu en arrière-plan
-      if (cachedMessages.some(msg => !msg.is_read && msg.sender_id !== user.id)) {
-        messagesService.markMessagesAsRead(id).catch(console.error);
-      }
+    // Vérifier le cache d'abord
+    if (messagesCache.has(id)) {
+      setMessages(messagesCache.get(id));
       return;
     }
     
-    // Si pas en cache, charger depuis l'API
-    setLoading(true);
     try {
       const history = await messagesService.getMessageHistory(id);
       setMessages(history);
-      // Mettre en cache
-      setMessagesCache(prev => new Map(prev.set(id, history)));
+      
+      // Mettre en cache les messages
+      setMessagesCache(prev => new Map(prev).set(id, history));
+      
       if (history.some(msg => !msg.is_read && msg.sender_id !== user.id)) {
         await messagesService.markMessagesAsRead(id);
       }
     } catch (err) {
       setError('Erreur lors du chargement des messages');
       console.error('Erreur loadMessages:', err);
-    } finally {
-      setLoading(false);
     }
   }, [user, messagesCache]);
 
@@ -115,7 +96,6 @@ export const useMessages = (receiverId = null) => {
       const response = await messagesService.sendTextMessage(receiverId, content);
       const newMessage = response.data;
       
-      // Mettre à jour les messages affichés
       setMessages(prev => [...prev, newMessage]);
       
       // Mettre à jour le cache
@@ -126,7 +106,6 @@ export const useMessages = (receiverId = null) => {
         return newCache;
       });
       
-      // Mettre à jour les conversations
       setConversations(prev =>
         prev.map(conv =>
           conv.friend.id === receiverId
@@ -144,24 +123,11 @@ export const useMessages = (receiverId = null) => {
   const sendFileMessage = useCallback(async (receiverId, file) => {
     try {
       const response = await messagesService.sendFileMessage(receiverId, file);
-      const newMessage = response.data;
-      
-      // Mettre à jour les messages affichés
-      setMessages(prev => [...prev, newMessage]);
-      
-      // Mettre à jour le cache
-      setMessagesCache(prev => {
-        const newCache = new Map(prev);
-        const cachedMessages = newCache.get(receiverId) || [];
-        newCache.set(receiverId, [...cachedMessages, newMessage]);
-        return newCache;
-      });
-      
-      // Mettre à jour les conversations
+      setMessages(prev => [...prev, response.data]);
       setConversations(prev =>
         prev.map(conv =>
           conv.friend.id === receiverId
-            ? { ...conv, lastMessage: newMessage, unreadCount: 0 }
+            ? { ...conv, lastMessage: response.data, unreadCount: 0 }
             : conv
         )
       );
@@ -175,24 +141,11 @@ export const useMessages = (receiverId = null) => {
   const sendAudioMessage = useCallback(async (receiverId, audioFile) => {
     try {
       const response = await messagesService.sendAudioMessage(receiverId, audioFile);
-      const newMessage = response.data;
-      
-      // Mettre à jour les messages affichés
-      setMessages(prev => [...prev, newMessage]);
-      
-      // Mettre à jour le cache
-      setMessagesCache(prev => {
-        const newCache = new Map(prev);
-        const cachedMessages = newCache.get(receiverId) || [];
-        newCache.set(receiverId, [...cachedMessages, newMessage]);
-        return newCache;
-      });
-      
-      // Mettre à jour les conversations
+      setMessages(prev => [...prev, response.data]);
       setConversations(prev =>
         prev.map(conv =>
           conv.friend.id === receiverId
-            ? { ...conv, lastMessage: newMessage, unreadCount: 0 }
+            ? { ...conv, lastMessage: response.data, unreadCount: 0 }
             : conv
         )
       );
@@ -222,60 +175,98 @@ export const useMessages = (receiverId = null) => {
 
   const isMyMessage = (message) => message.sender_id === user.id;
 
-  // Chargement initial des conversations
-  useEffect(() => {
-    console.log('🔄 useEffect conversations - État:', {
-      user: !!user,
-      friendsListLength: friendsList?.length,
-      friendsLoading,
-      shouldLoad: !!(user && friendsList && !friendsLoading)
-    });
+  // Fonction pour ajouter un nouveau message reçu via Pusher
+  const addNewMessage = useCallback((newMessage) => {
+    console.log('📨 Ajout du nouveau message dans useMessages:', newMessage);
     
-    if (user && friendsList && !friendsLoading) {
-      console.log('✅ Conditions remplies, chargement des conversations...');
-      loadConversations();
-    } else {
-      console.log('❌ Conditions non remplies pour charger les conversations');
-    }
-  }, [user, friendsList, friendsLoading, loadConversations]);
-
-  // Chargement forcé après un délai (fallback)
-  useEffect(() => {
-    if (user && friendsList && friendsList.length > 0 && conversations.length === 0) {
-      const timer = setTimeout(() => {
-        console.log('⏰ Chargement forcé des conversations après délai...');
-        loadConversations();
-      }, 2000);
+    // Ajouter le message à la liste des messages si c'est la conversation actuelle
+    if (selectedConversation && newMessage.sender_id === selectedConversation.friend.id) {
+      setMessages(prev => [...prev, newMessage]);
       
-      return () => clearTimeout(timer);
-    }
-  }, [user, friendsList, conversations.length, loadConversations]);
-
-  // Préchargement des messages pour les conversations non visitées
-  useEffect(() => {
-    if (conversations.length > 0 && !conversationsLoading) {
-      // Précharger les messages pour les 3 premières conversations
-      const conversationsToPreload = conversations.slice(0, 3);
-      conversationsToPreload.forEach(conv => {
-        if (!messagesCache.has(conv.friend.id)) {
-          // Charger en arrière-plan sans bloquer l'interface
-          messagesService.getMessageHistory(conv.friend.id)
-            .then(history => {
-              setMessagesCache(prev => new Map(prev.set(conv.friend.id, history)));
-            })
-            .catch(console.error);
-        }
+      // Mettre à jour le cache
+      setMessagesCache(prev => {
+        const newCache = new Map(prev);
+        const cachedMessages = newCache.get(selectedConversation.friend.id) || [];
+        newCache.set(selectedConversation.friend.id, [...cachedMessages, newMessage]);
+        return newCache;
       });
     }
-  }, [conversations, conversationsLoading, messagesCache]);
+    
+    // Mettre à jour la liste des conversations
+    setConversations(prev =>
+      prev.map(conv => {
+        if (conv.friend.id === newMessage.sender_id) {
+          return {
+            ...conv,
+            lastMessage: newMessage,
+            unreadCount: conv.unreadCount + 1
+          };
+        }
+        return conv;
+      })
+    );
+  }, [selectedConversation]);
+
+  useEffect(() => {
+    if (user && friendsList && !friendsLoading) {
+      loadConversations();
+    }
+    if (receiverId && user) {
+      const conv = conversations.find(c => c.friend.id === receiverId);
+      setSelectedConversation(conv || null);
+      if (conv) loadMessages(receiverId);
+    }
+  }, [loadConversations, user, friendsList, friendsLoading, receiverId]);
+
+  // Polling temporaire pour les nouveaux messages (en attendant Pusher backend)
+  useEffect(() => {
+    if (!user?.id || !selectedConversation) return;
+
+    const checkNewMessages = async () => {
+      try {
+        const history = await messagesService.getMessageHistory(selectedConversation.friend.id);
+        
+        // Comparer avec les messages actuels
+        const currentMessageIds = new Set(messages.map(msg => msg.id));
+        const newMessages = history.filter(msg => !currentMessageIds.has(msg.id));
+        
+        if (newMessages.length > 0) {
+          console.log('🔄 Polling - Nouveaux messages détectés:', newMessages);
+          
+          // Ajouter les nouveaux messages
+          setMessages(prev => [...prev, ...newMessages]);
+          
+          // Mettre à jour le cache
+          setMessagesCache(prev => {
+            const newCache = new Map(prev);
+            const cachedMessages = newCache.get(selectedConversation.friend.id) || [];
+            newCache.set(selectedConversation.friend.id, [...cachedMessages, ...newMessages]);
+            return newCache;
+          });
+          
+          // Marquer comme lu si nécessaire
+          const unreadMessages = newMessages.filter(msg => !msg.is_read && msg.sender_id !== user.id);
+          if (unreadMessages.length > 0) {
+            await messagesService.markMessagesAsRead(selectedConversation.friend.id);
+          }
+        }
+      } catch (err) {
+        console.error('Erreur lors du polling des messages:', err);
+      }
+    };
+
+    // Vérifier toutes les 3 secondes
+    const interval = setInterval(checkNewMessages, 3000);
+    
+    return () => clearInterval(interval);
+  }, [user?.id, selectedConversation, messages]);
 
   return {
     conversations,
-    setConversations,
     selectedConversation,
     setSelectedConversation,
     messages,
-    loading: loading || conversationsLoading,
+    loading,
     error,
     sendTextMessage,
     sendFileMessage,
@@ -283,6 +274,7 @@ export const useMessages = (receiverId = null) => {
     loadMessages,
     downloadFile,
     isMyMessage,
+    addNewMessage,
     reload: loadConversations,
   };
 };

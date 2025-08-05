@@ -87,8 +87,8 @@ const ConversationPanel = ({
                 <p className="text-gray-500 text-sm md:text-base">Aucun message pour le moment. Démarrez la conversation 👋</p>
               </div>
             ) : (
-              messages.map((msg) => (
-                <div key={msg.id} className={`flex ${isMyMessage(msg) ? 'justify-end' : 'justify-start'}`}>
+              messages.map((msg, index) => (
+                <div key={`${msg.id}-${index}-${msg.created_at}`} className={`flex ${isMyMessage(msg) ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-xs sm:max-w-sm md:max-w-md ${isMyMessage(msg) ? 'order-2' : 'order-1'}`}>
                     <div
                       className={`rounded-2xl p-2 md:p-3 shadow-sm ${

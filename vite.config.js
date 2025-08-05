@@ -34,6 +34,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // Proxy pour l'authentification Pusher
+      "/broadcasting": {
+        target: "http://192.168.1.4:8000",
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 });

@@ -4,13 +4,13 @@ import { callsService } from '../features/auth/services/callsService';
 import { useFriends } from '../hooks/useFriends';
 import IncomingCallModal from '../features/auth/components/Call/IncomingCallModal';
 import { toast } from 'react-toastify';
-import { useCalls } from '../hooks/useCalls';
+import { usePusher } from '../hooks/usePusher';
 
 export default function GlobalCallWatcher() {
   const [incomingCall, setIncomingCall] = useState(null);
   const { user } = useAuth();
   const { friendsList } = useFriends();
-  const { incomingCalls, getLatestIncomingCall } = useCalls(user?.id);
+  const { listenToCalls } = usePusher(user?.id);
   
   // ✅ Référence pour stocker l'ID du toast actuel
   const currentToastId = useRef(null);
@@ -130,13 +130,14 @@ export default function GlobalCallWatcher() {
 
   // Écouter les appels entrants via Pusher
   useEffect(() => {
-    if (!user?.id || !incomingCalls.length) return;
+    if (!user?.id) return;
 
-    const latestCall = getLatestIncomingCall();
-    if (latestCall && latestCall.id !== incomingCall?.id) {
-      handleNewCall(latestCall);
-    }
-  }, [user?.id, incomingCalls, getLatestIncomingCall, incomingCall?.id]);
+    listenToCalls(handleNewCall);
+
+    return () => {
+      // Nettoyage automatique via le hook usePusher
+    };
+  }, [user?.id, listenToCalls]);
 
   // Nettoyer l'appel entrant quand l'utilisateur se déconnecte
   useEffect(() => {

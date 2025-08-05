@@ -6,8 +6,8 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { UserStatusProvider } from './contexts';
 import GlobalCallWatcher from './components/GlobalCallWatcher';
+import { usePusher } from './hooks/usePusher';
 import { useAuth } from './features/auth/contexts/AuthContext';
-import pusherService from './services/pusherService';
 
 function App() {
   return (
@@ -21,25 +21,27 @@ function App() {
 
 function AppContent() {
   const { user } = useAuth();
+  const { listenToPosts, listenToUserStatus } = usePusher(user?.id);
 
-  // Initialiser Pusher quand l'utilisateur est connecté
+  // Écouter les nouveaux posts
   useEffect(() => {
-    if (user?.id) {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (token) {
-        pusherService.initialize();
-        console.log('🚀 Pusher initialisé pour l\'utilisateur:', user.id);
-      }
-    } else {
-      // Déconnecter Pusher si l'utilisateur n'est pas connecté
-      pusherService.disconnect();
-    }
+    if (!user?.id) return;
 
-    // Nettoyer à la déconnexion
-    return () => {
-      pusherService.disconnect();
-    };
-  }, [user?.id]);
+    listenToPosts((post) => {
+      console.log('📝 Nouveau post reçu via Pusher:', post);
+      // Ici vous pouvez dispatcher une action ou mettre à jour le state
+    });
+  }, [user?.id, listenToPosts]);
+
+  // Écouter le statut des utilisateurs
+  useEffect(() => {
+    if (!user?.id) return;
+
+    listenToUserStatus((data) => {
+      console.log('👤 Statut utilisateur mis à jour via Pusher:', data);
+      // Ici vous pouvez mettre à jour le statut des utilisateurs
+    });
+  }, [user?.id, listenToUserStatus]);
 
   return (
     <>

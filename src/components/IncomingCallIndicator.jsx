@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../features/auth/contexts/AuthContext';
 import { useFriends } from '../hooks/useFriends';
-import { useCalls } from '../hooks/useCalls';
+import { usePusher } from '../hooks/usePusher';
 
 export default function IncomingCallIndicator() {
   const [hasIncomingCall, setHasIncomingCall] = useState(false);
   const [callerName, setCallerName] = useState('');
   const { user } = useAuth();
   const { friendsList } = useFriends();
-  const { incomingCalls, getLatestIncomingCall } = useCalls(user?.id);
+  const { listenToCalls } = usePusher(user?.id);
 
   // Gérer les appels entrants via Pusher
   const handleNewCall = (callData) => {
@@ -24,13 +24,14 @@ export default function IncomingCallIndicator() {
 
   // Écouter les appels entrants via Pusher
   useEffect(() => {
-    if (!user?.id || !incomingCalls.length) return;
+    if (!user?.id) return;
 
-    const latestCall = getLatestIncomingCall();
-    if (latestCall) {
-      handleNewCall(latestCall);
-    }
-  }, [user?.id, incomingCalls, getLatestIncomingCall]);
+    listenToCalls(handleNewCall);
+
+    return () => {
+      // Nettoyage automatique via le hook usePusher
+    };
+  }, [user?.id, listenToCalls]);
 
   // Nettoyer quand l'utilisateur se déconnecte
   useEffect(() => {

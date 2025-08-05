@@ -27,12 +27,9 @@ L'application PullApp*React* a été migrée de systèmes de polling vers **Push
 
 ### **Services créés**
 
-- `src/services/pusherService.js` - Service principal Pusher (refactorisé)
-- `src/hooks/useNotifications.js` - Hook pour les notifications temps réel
-- `src/hooks/useRealTimeMessages.js` - Hook pour les messages temps réel
-- `src/hooks/usePosts.js` - Hook pour les posts temps réel
-- `src/hooks/useUserStatus.js` - Hook pour le statut utilisateur
-- `src/hooks/useCalls.js` - Hook pour les appels temps réel
+- `src/services/pusherService.js` - Service principal Pusher
+- `src/hooks/usePusher.js` - Hook React pour Pusher
+- `src/hooks/useNotifications.js` - Hook pour les notifications
 - `src/config/pusher.js` - Configuration centralisée
 
 ### **Composants modifiés**
@@ -128,20 +125,15 @@ export const PUSHER_CONFIG = {
 ### **Hook principal**
 
 ```javascript
-import { useCalls } from "../hooks/useCalls";
-import { useRealTimeMessages } from "../hooks/useRealTimeMessages";
-import { usePosts } from "../hooks/usePosts";
+import { usePusher } from "../hooks/usePusher";
 
-const { incomingCalls, getLatestIncomingCall } = useCalls(userId);
-const { messages, addMessage } = useRealTimeMessages(userId);
-const { posts, addPost } = usePosts();
+const { listenToCalls, listenToMessages, listenToPosts } = usePusher(userId);
 
 useEffect(() => {
-  const latestCall = getLatestIncomingCall();
-  if (latestCall) {
+  listenToCalls((callData) => {
     // Gérer l'appel entrant
-  }
-}, [incomingCalls, getLatestIncomingCall]);
+  });
+}, [listenToCalls]);
 ```
 
 ### **Hook notifications**

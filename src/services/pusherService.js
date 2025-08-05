@@ -1,163 +1,169 @@
 import Pusher from "pusher-js";
+import { PUSHER_CONFIG } from "../config/pusher";
 
 class PusherService {
   constructor() {
-    this.pusher = null;
+    this.pusher = new Pusher(PUSHER_CONFIG.appKey, {
+      cluster: PUSHER_CONFIG.cluster,
+      encrypted: PUSHER_CONFIG.encrypted,
+      authEndpoint: PUSHER_CONFIG.authEndpoint,
+      auth: {
+        headers: {
+          Authorization: `Bearer ${this.getToken()}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      },
+    });
+
     this.channels = new Map();
-    this.isConnected = false;
+    this.setupGlobalListeners();
   }
 
-  // Initialiser Pusher avec authentification
-  initialize() {
-    if (this.pusher) {
-      this.disconnect();
-    }
-
-    this.pusher = new Pusher(
-      import.meta.env.VITE_PUSHER_APP_KEY || "76a687ce58f17f3aa97a",
-      {
-        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || "eu",
-        encrypted: true,
-        // Désactiver temporairement l'authentification en attendant le backend
-        // authEndpoint: `${import.meta.env.VITE_API_URL || 'http://192.168.1.4:8000'}/broadcasting/auth`,
-        // auth: {
-        //     headers: {
-        //         'Authorization': `Bearer ${token}`,
-        //         'Accept': 'application/json',
-        //         'Content-Type': 'application/json',
-        //     }
-        // }
-      }
+  // Récupérer le token d'authentification
+  getToken() {
+    const token =
+      localStorage.getItem("auth_token") ||
+      sessionStorage.getItem("auth_token");
+    console.log(
+      "🔑 Token récupéré pour Pusher:",
+      token ? "Token présent" : "Aucun token"
     );
+    return token;
+  }
 
-    // Écouter les événements de connexion
+  // Configuration des listeners globaux
+  setupGlobalListeners() {
     this.pusher.connection.bind("connected", () => {
-      console.log("✅ Pusher connecté");
-      this.isConnected = true;
+      console.log("✅ Connexion Pusher établie");
     });
 
     this.pusher.connection.bind("disconnected", () => {
-      console.log("❌ Pusher déconnecté");
-      this.isConnected = false;
+      console.log("❌ Connexion Pusher perdue");
     });
 
-    this.pusher.connection.bind("error", (err) => {
-      console.error("❌ Erreur Pusher:", err);
-      this.handleConnectionError(err);
+    this.pusher.connection.bind("error", (error) => {
+      console.error("❌ Erreur Pusher:", error);
     });
-
-    return this.pusher;
   }
 
-  // Se connecter à un canal public
-  subscribeToPublicChannel(channelName) {
-    if (!this.pusher) {
-      console.log("🔄 Initialisation automatique de Pusher...");
-      this.initialize();
-    }
+  // Écouter les notifications
+  listenToNotifications(userId, callback) {
+    const channelName = `private-notifications.${userId}`;
+    const channel = this.pusher.subscribe(channelName);
+
+    channel.bind("new-notification", (data) => {
+      console.log("📢 Nouvelle notification reçue:", data);
+      callback(data);
+    });
+
+    this.channels.set(channelName, channel);
+    return channel;
+  }
+
+  // Écouter les messages
+  listenToMessages(userId, callback) {
+    const channelName = `private-messages.${userId}`;
+    console.log(`🔌 Tentative de connexion au canal: ${channelName}`);
 
     const channel = this.pusher.subscribe(channelName);
-    this.channels.set(channelName, channel);
-    return channel;
-  }
 
-  // Se connecter à un canal privé
-  subscribeToPrivateChannel(channelName) {
-    if (!this.pusher) {
-      console.log("🔄 Initialisation automatique de Pusher...");
-      this.initialize();
-    }
-
-    const channel = this.pusher.subscribe(`private-${channelName}`);
-    this.channels.set(channelName, channel);
-
-    // Gérer les erreurs d'authentification
-    channel.bind("pusher:subscription_error", (error) => {
-      this.handleAuthError(error);
+    channel.bind("new-message", (data) => {
+      console.log("💬 Nouveau message reçu:", data);
+      callback(data);
     });
 
+    channel.bind("pusher:subscription_succeeded", () => {
+      console.log(`✅ Connexion réussie au canal: ${channelName}`);
+    });
+
+    channel.bind("pusher:subscription_error", (error) => {
+      console.error(`❌ Erreur de connexion au canal ${channelName}:`, error);
+    });
+
+    this.channels.set(channelName, channel);
     return channel;
   }
 
-  // Se déconnecter d'un canal
-  unsubscribeFromChannel(channelName) {
-    const channel = this.channels.get(channelName);
-    if (channel) {
+  // Écouter les appels
+  listenToCalls(userId, callback) {
+    const channelName = `private-calls.${userId}`;
+    const channel = this.pusher.subscribe(channelName);
+
+    channel.bind("new-call", (data) => {
+      console.log("📞 Nouvel appel reçu:", data);
+      callback(data);
+    });
+
+    this.channels.set(channelName, channel);
+    return channel;
+  }
+
+  // Écouter les nouveaux posts
+  listenToPosts(callback) {
+    const channelName = "posts";
+    const channel = this.pusher.subscribe(channelName);
+
+    channel.bind("new-post", (data) => {
+      console.log("📝 Nouveau post reçu:", data);
+      callback(data);
+    });
+
+    this.channels.set(channelName, channel);
+    return channel;
+  }
+
+  // Écouter le statut des utilisateurs
+  listenToUserStatus(callback) {
+    const channelName = "user-status";
+    const channel = this.pusher.subscribe(channelName);
+
+    channel.bind("user-online", (data) => {
+      console.log("🟢 Utilisateur en ligne:", data);
+      callback(data);
+    });
+
+    channel.bind("user-offline", (data) => {
+      console.log("🔴 Utilisateur hors ligne:", data);
+      callback(data);
+    });
+
+    this.channels.set(channelName, channel);
+    return channel;
+  }
+
+  // Se désabonner d'un canal
+  unsubscribe(channelName) {
+    if (this.channels.has(channelName)) {
       this.pusher.unsubscribe(channelName);
       this.channels.delete(channelName);
+      console.log(`🔇 Désabonné du canal: ${channelName}`);
     }
   }
 
-  // Se déconnecter complètement
-  disconnect() {
-    if (this.pusher) {
-      this.pusher.disconnect();
-      this.channels.clear();
-      this.isConnected = false;
-    }
-  }
-
-  // Obtenir un canal
-  getChannel(channelName) {
-    return this.channels.get(channelName);
-  }
-
-  // Vérifier si Pusher est initialisé
-  isInitialized() {
-    return this.pusher !== null;
-  }
-
-  // Attendre que Pusher soit initialisé
-  async waitForInitialization() {
-    if (this.isInitialized()) {
-      return Promise.resolve();
-    }
-
-    return new Promise((resolve) => {
-      const checkInitialization = () => {
-        if (this.isInitialized()) {
-          resolve();
-        } else {
-          setTimeout(checkInitialization, 100);
-        }
-      };
-      checkInitialization();
+  // Se désabonner de tous les canaux
+  unsubscribeAll() {
+    this.channels.forEach((channel, channelName) => {
+      this.pusher.unsubscribe(channelName);
     });
+    this.channels.clear();
+    console.log("🔇 Désabonné de tous les canaux");
   }
 
-  // Gestion des erreurs de connexion
-  handleConnectionError(error) {
-    console.error("Erreur de connexion Pusher:", error);
+  // Obtenir l'état de la connexion
+  getConnectionState() {
+    return this.pusher.connection.state;
+  }
 
-    // Tentative de reconnexion
+  // Forcer la reconnexion
+  reconnect() {
+    this.pusher.disconnect();
     setTimeout(() => {
-      if (!this.isConnected) {
-        console.log("Tentative de reconnexion...");
-        const token =
-          localStorage.getItem("token") || sessionStorage.getItem("token");
-        if (token) {
-          this.initialize(token);
-        }
-      }
-    }, 5000);
-  }
-
-  // Gestion des erreurs d'authentification
-  handleAuthError(error) {
-    console.error("Erreur d'authentification Pusher:", error);
-
-    // Rediriger vers la page de connexion si le token est invalide
-    if (error.status === 401) {
-      localStorage.removeItem("token");
-      sessionStorage.removeItem("token");
-      window.location.href = "/login";
-    }
-  }
-
-  // Logs personnalisés
-  logEvent(channelName, eventName, data) {
-    console.log(`📡 [${channelName}] ${eventName}:`, data);
+      this.pusher.connect();
+    }, 1000);
   }
 }
 
-export default new PusherService();
+// Instance singleton
+const pusherService = new PusherService();
+export default pusherService;
