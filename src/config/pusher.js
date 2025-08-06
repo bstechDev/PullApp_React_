@@ -5,7 +5,12 @@ export const PUSHER_CONFIG = {
   encrypted: true,
   authEndpoint: `${
     import.meta.env.VITE_API_URL || "http://192.168.1.4:8000"
-  }/broadcasting/auth`,
+  }/api/broadcasting/auth`,
+  auth: {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  },
 };
 
 // Types d'événements Pusher

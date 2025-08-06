@@ -3,14 +3,16 @@ import { PUSHER_CONFIG } from "../config/pusher";
 
 class PusherService {
   constructor() {
+    const token = this.getToken();
+    console.log("🔑 Token pour Pusher:", token ? "Présent" : "Absent");
+
     this.pusher = new Pusher(PUSHER_CONFIG.appKey, {
       cluster: PUSHER_CONFIG.cluster,
       encrypted: PUSHER_CONFIG.encrypted,
       authEndpoint: PUSHER_CONFIG.authEndpoint,
       auth: {
         headers: {
-          Authorization: `Bearer ${this.getToken()}`,
-          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       },
@@ -65,6 +67,8 @@ class PusherService {
   listenToMessages(userId, callback) {
     const channelName = `private-messages.${userId}`;
     console.log(`🔌 Tentative de connexion au canal: ${channelName}`);
+    console.log(`🔑 Token utilisé: ${this.getToken() ? "Présent" : "Absent"}`);
+    console.log(`🌐 Endpoint: ${PUSHER_CONFIG.authEndpoint}`);
 
     const channel = this.pusher.subscribe(channelName);
 
@@ -79,6 +83,23 @@ class PusherService {
 
     channel.bind("pusher:subscription_error", (error) => {
       console.error(`❌ Erreur de connexion au canal ${channelName}:`, error);
+
+      // Gestion spécifique des erreurs d'authentification
+      if (error.type === "AuthError") {
+        console.error("🔐 Erreur d'authentification Pusher:", {
+          error: error.error,
+          status: error.status,
+          channel: channelName,
+        });
+
+        // Vérifier le token
+        const token = this.getToken();
+        if (!token) {
+          console.error("❌ Token d'authentification manquant");
+        } else {
+          console.log("🔑 Token présent, problème probable côté backend");
+        }
+      }
     });
 
     this.channels.set(channelName, channel);

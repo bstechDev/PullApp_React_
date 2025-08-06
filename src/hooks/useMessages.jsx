@@ -41,6 +41,14 @@ export const useMessages = (receiverId = null) => {
         try {
           const history = await messagesService.getMessageHistory(friend.id);
           const unreadCount = history.filter(msg => !msg.is_read && msg.sender_id === friend.id).length;
+          
+          // Mettre à jour le cache des messages pour cette conversation
+          setMessagesCache(prev => {
+            const newCache = new Map(prev);
+            newCache.set(friend.id, history);
+            return newCache;
+          });
+          
           return {
             friend,
             lastMessage: history.length > 0 ? history[history.length - 1] : null,
@@ -69,27 +77,31 @@ export const useMessages = (receiverId = null) => {
   const loadMessages = useCallback(async (id) => {
     if (!user || !id) return;
     
-    // Vérifier le cache d'abord
-    if (messagesCache.has(id)) {
-      setMessages(messagesCache.get(id));
-      return;
-    }
-    
     try {
       const history = await messagesService.getMessageHistory(id);
+      
+      // Vérifier s'il y a de nouveaux messages
+      const currentMessageIds = new Set(messages.map(msg => msg.id));
+      const newMessages = history.filter(msg => !currentMessageIds.has(msg.id));
+      
+      if (newMessages.length > 0) {
+      }
+      
       setMessages(history);
       
       // Mettre en cache les messages
       setMessagesCache(prev => new Map(prev).set(id, history));
       
-      if (history.some(msg => !msg.is_read && msg.sender_id !== user.id)) {
+      // Marquer comme lu si nécessaire
+      const unreadMessages = history.filter(msg => !msg.is_read && msg.sender_id !== user.id);
+      if (unreadMessages.length > 0) {
         await messagesService.markMessagesAsRead(id);
       }
     } catch (err) {
       setError('Erreur lors du chargement des messages');
       console.error('Erreur loadMessages:', err);
     }
-  }, [user, messagesCache]);
+  }, [user, messagesCache, messages]);
 
   const sendTextMessage = useCallback(async (receiverId, content) => {
     try {
@@ -177,35 +189,92 @@ export const useMessages = (receiverId = null) => {
 
   // Fonction pour ajouter un nouveau message reçu via Pusher
   const addNewMessage = useCallback((newMessage) => {
-    console.log('📨 Ajout du nouveau message dans useMessages:', newMessage);
+    // Vérifier si le message est pour la conversation actuelle
+    const isCurrentConversation = selectedConversation && 
+      (newMessage.sender_id === selectedConversation.friend.id || 
+       newMessage.receiver_id === selectedConversation.friend.id ||
+       receiverId === newMessage.sender_id);
     
-    // Ajouter le message à la liste des messages si c'est la conversation actuelle
-    if (selectedConversation && newMessage.sender_id === selectedConversation.friend.id) {
-      setMessages(prev => [...prev, newMessage]);
+    // Si c'est un message pour l'utilisateur actuel mais que la conversation n'est pas chargée
+    if (newMessage.receiver_id === user?.id && !isCurrentConversation) {
+      loadConversations();
+      
+      // Si on a un receiverId et que c'est la conversation actuelle, forcer le chargement
+      if (receiverId && (newMessage.sender_id === receiverId || newMessage.receiver_id === receiverId)) {
+        loadMessages(receiverId);
+      }
+    }
+    
+    // TOUJOURS ajouter le message à la liste des messages si c'est la conversation actuelle
+    if (isCurrentConversation) {
+      setMessages(prev => {
+        // Vérifier si le message n'existe pas déjà
+        const messageExists = prev.some(msg => msg.id === newMessage.id);
+        if (messageExists) {
+          return prev;
+        }
+        return [...prev, newMessage];
+      });
       
       // Mettre à jour le cache
       setMessagesCache(prev => {
         const newCache = new Map(prev);
-        const cachedMessages = newCache.get(selectedConversation.friend.id) || [];
-        newCache.set(selectedConversation.friend.id, [...cachedMessages, newMessage]);
+        const conversationId = selectedConversation.friend.id;
+        const cachedMessages = newCache.get(conversationId) || [];
+        
+        // Vérifier si le message n'existe pas déjà dans le cache
+        const messageExistsInCache = cachedMessages.some(msg => msg.id === newMessage.id);
+        if (!messageExistsInCache) {
+          newCache.set(conversationId, [...cachedMessages, newMessage]);
+        }
         return newCache;
       });
+      
+      // Marquer automatiquement comme lu si c'est un message reçu
+      if (newMessage.sender_id !== user?.id && !newMessage.is_read) {
+        messagesService.markMessagesAsRead(selectedConversation.friend.id).catch(err => {
+          console.error('Erreur lors du marquage comme lu:', err);
+        });
+      }
     }
     
-    // Mettre à jour la liste des conversations
+    // Mettre à jour la liste des conversations (TOUJOURS)
     setConversations(prev =>
       prev.map(conv => {
-        if (conv.friend.id === newMessage.sender_id) {
+        // Vérifier si le message concerne cette conversation
+        const isThisConversation = conv.friend.id === newMessage.sender_id || 
+                                 conv.friend.id === newMessage.receiver_id;
+        
+        if (isThisConversation) {
           return {
             ...conv,
             lastMessage: newMessage,
-            unreadCount: conv.unreadCount + 1
+            unreadCount: newMessage.sender_id !== user?.id ? conv.unreadCount + 1 : conv.unreadCount
           };
         }
         return conv;
       })
     );
-  }, [selectedConversation]);
+    
+    // NOUVEAU : Mettre à jour le cache pour TOUTES les conversations concernées
+    setMessagesCache(prev => {
+      const newCache = new Map(prev);
+      
+      // Identifier la conversation concernée
+      const conversationId = newMessage.sender_id === user?.id ? newMessage.receiver_id : newMessage.sender_id;
+      
+      if (conversationId) {
+        const cachedMessages = newCache.get(conversationId) || [];
+        const messageExistsInCache = cachedMessages.some(msg => msg.id === newMessage.id);
+        
+        if (!messageExistsInCache) {
+          newCache.set(conversationId, [...cachedMessages, newMessage]);
+        }
+      }
+      
+      return newCache;
+    });
+  }, [selectedConversation, receiverId, user?.id, loadConversations, loadMessages]);
 
   useEffect(() => {
     if (user && friendsList && !friendsLoading) {
@@ -218,38 +287,64 @@ export const useMessages = (receiverId = null) => {
     }
   }, [loadConversations, user, friendsList, friendsLoading, receiverId]);
 
-  // Polling temporaire pour les nouveaux messages (en attendant Pusher backend)
+  // Polling temporaire pour les nouveaux messages (en attendant correction erreur 403)
+  // ACTIVÉ - Backend Pusher a des problèmes d'authentification
   useEffect(() => {
-    if (!user?.id || !selectedConversation) return;
+    if (!user?.id) return;
 
     const checkNewMessages = async () => {
       try {
-        const history = await messagesService.getMessageHistory(selectedConversation.friend.id);
-        
-        // Comparer avec les messages actuels
-        const currentMessageIds = new Set(messages.map(msg => msg.id));
-        const newMessages = history.filter(msg => !currentMessageIds.has(msg.id));
-        
-        if (newMessages.length > 0) {
-          console.log('🔄 Polling - Nouveaux messages détectés:', newMessages);
-          
-          // Ajouter les nouveaux messages
-          setMessages(prev => [...prev, ...newMessages]);
-          
-          // Mettre à jour le cache
-          setMessagesCache(prev => {
-            const newCache = new Map(prev);
-            const cachedMessages = newCache.get(selectedConversation.friend.id) || [];
-            newCache.set(selectedConversation.friend.id, [...cachedMessages, ...newMessages]);
-            return newCache;
-          });
-          
-          // Marquer comme lu si nécessaire
-          const unreadMessages = newMessages.filter(msg => !msg.is_read && msg.sender_id !== user.id);
-          if (unreadMessages.length > 0) {
-            await messagesService.markMessagesAsRead(selectedConversation.friend.id);
+        // Vérifier les messages pour toutes les conversations, pas seulement la conversation actuelle
+        const conversationPromises = conversations.map(async (conv) => {
+          try {
+            const history = await messagesService.getMessageHistory(conv.friend.id);
+            
+            // Comparer avec les messages actuels dans le cache
+            const cachedMessages = messagesCache.get(conv.friend.id) || [];
+            const currentMessageIds = new Set(cachedMessages.map(msg => msg.id));
+            const newMessages = history.filter(msg => !currentMessageIds.has(msg.id));
+            
+            if (newMessages.length > 0) {
+              // Mettre à jour le cache pour cette conversation
+              setMessagesCache(prev => {
+                const newCache = new Map(prev);
+                newCache.set(conv.friend.id, history);
+                return newCache;
+              });
+              
+              // Si c'est la conversation actuelle, mettre à jour l'affichage
+              if (selectedConversation && conv.friend.id === selectedConversation.friend.id) {
+                setMessages(history);
+              }
+              
+              // Mettre à jour la liste des conversations
+              setConversations(prev =>
+                prev.map(conversation => {
+                  if (conversation.friend.id === conv.friend.id) {
+                    return {
+                      ...conversation,
+                      lastMessage: history.length > 0 ? history[history.length - 1] : null,
+                      unreadCount: history.filter(msg => !msg.is_read && msg.sender_id === conv.friend.id).length
+                    };
+                  }
+                  return conversation;
+                })
+              );
+              
+              // Marquer comme lu si c'est la conversation actuelle
+              if (selectedConversation && conv.friend.id === selectedConversation.friend.id) {
+                const unreadMessages = newMessages.filter(msg => !msg.is_read && msg.sender_id !== user.id);
+                if (unreadMessages.length > 0) {
+                  await messagesService.markMessagesAsRead(conv.friend.id);
+                }
+              }
+            }
+          } catch (err) {
+            console.error(`Erreur lors du polling pour ${conv.friend.first_name}:`, err);
           }
-        }
+        });
+
+        await Promise.all(conversationPromises);
       } catch (err) {
         console.error('Erreur lors du polling des messages:', err);
       }
@@ -259,7 +354,7 @@ export const useMessages = (receiverId = null) => {
     const interval = setInterval(checkNewMessages, 3000);
     
     return () => clearInterval(interval);
-  }, [user?.id, selectedConversation, messages]);
+  }, [user?.id, conversations, selectedConversation, messagesCache]);
 
   return {
     conversations,

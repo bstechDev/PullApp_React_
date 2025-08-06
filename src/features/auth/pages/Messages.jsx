@@ -7,8 +7,7 @@ import MessageList from '../components/MessageList';
 import ConversationPanel from '../components/ConversationPanel';
 import { RefreshCw } from 'lucide-react';
 import UserStatusManager from '../components/UserStatusManager';
-import PusherTest from '../../../components/PusherTest';
-import api from '../../../services/api'; // Pour appels API statuts
+import api from '../../../services/api'; // Pour appels API statutsTest
 
 const Messages = () => {
   const { receiverId } = useParams();
@@ -29,7 +28,6 @@ const Messages = () => {
     downloadFile,
     isMyMessage,
     addNewMessage,
-    reload,
   } = useMessages(receiverId);
 
   // Hook Pusher pour les messages en temps réel
@@ -108,14 +106,15 @@ const Messages = () => {
   // Écouter les nouveaux messages via Pusher
   useEffect(() => {
     if (!user?.id) {
-      console.log('🚫 Pas d\'utilisateur connecté, arrêt de l\'écoute Pusher');
       return;
     }
-
-    console.log('🔌 Démarrage de l\'écoute Pusher pour l\'utilisateur:', user.id);
     
-    listenToMessages((data) => {
-      console.log('📨 Nouveau message reçu via Pusher:', data);
+    const handleNewMessage = (data) => {
+      // Vérifier que les données sont valides
+      if (!data.message || !data.message.id) {
+        console.error('❌ Données de message invalides:', data);
+        return;
+      }
       
       // Ajouter le nouveau message à la liste des messages
       const newMessage = data.message;
@@ -124,37 +123,35 @@ const Messages = () => {
       addNewMessage(newMessage);
       
       // Afficher une notification si la conversation n'est pas sélectionnée
-      if (!selectedConversation || selectedConversation.friend.id !== newMessage.sender_id) {
-        showToast(`Nouveau message de ${data.sender_name || 'quelqu\'un'}`, 'info');
-      }
-    });
-  }, [user?.id, listenToMessages, selectedConversation, addNewMessage]);
-
-  // Écouter les événements de test (temporaire)
-  useEffect(() => {
-    const handleTestMessage = (event) => {
-      console.log('🧪 TEST - Événement de test reçu:', event.detail);
+      const isCurrentConversation = selectedConversation && 
+        (newMessage.sender_id === selectedConversation.friend.id || 
+         newMessage.receiver_id === selectedConversation.friend.id);
       
-      if (event.detail.type === 'test-message') {
-        const data = event.detail.data;
-        const newMessage = data.message;
-        
-        // Utiliser la fonction addNewMessage du hook useMessages
-        addNewMessage(newMessage);
-        
-        // Afficher une notification si la conversation n'est pas sélectionnée
-        if (!selectedConversation || selectedConversation.friend.id !== newMessage.sender_id) {
-          showToast(`Nouveau message de ${data.sender_name || 'quelqu\'un'}`, 'info');
-        }
+      if (!isCurrentConversation) {
+        const senderName = data.sender_name || 'quelqu\'un';
+        showToast(`Nouveau message de ${senderName}`, 'info');
       }
     };
-
-    window.addEventListener('test-message', handleTestMessage);
     
-    return () => {
-      window.removeEventListener('test-message', handleTestMessage);
+    // Gestion des erreurs Pusher
+    const handlePusherError = (error) => {
+      console.error('❌ Erreur Pusher détectée:', error);
+      showToast('Problème de connexion temps réel, utilisation du polling', 'warning');
     };
-  }, [selectedConversation, addNewMessage]);
+    
+    // Écouter les messages
+    try {
+      listenToMessages(handleNewMessage);
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'écoute Pusher:', error);
+      handlePusherError(error);
+    }
+    
+    // Cleanup function
+    return () => {
+      // Nettoyage silencieux
+    };
+  }, [user?.id, listenToMessages, selectedConversation, addNewMessage]);
 
   const handleSendMessage = async () => {
     if (!selectedConversation || (!messageContent.trim() && !file)) return;
@@ -238,7 +235,7 @@ const Messages = () => {
   return (
     <>
       <UserStatusManager isEnabled={!!user?.id} />
-      <PusherTest />
+      
       <div className="h-screen flex flex-col md:flex-row">
         {/* Toggle button for mobile */}
         <button
