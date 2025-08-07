@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../../features/auth/contexts/AuthContext';
 import { createPost } from './feedService';
 
-const CreatePostForm = ({ onPostCreated, onCancel, isVisible = false }) => {
+const CreatePostForm = ({ onPostCreated, onCancel, isVisible = false, initialModalType = null }) => {
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
@@ -290,10 +290,21 @@ const CreatePostForm = ({ onPostCreated, onCancel, isVisible = false }) => {
 
   // Ouvrir le modal avec le bon contenu
   useEffect(() => {
-    if (isVisible && !modalType) {
-      setModalType('post');
+    if (isVisible) {
+      if (initialModalType && ['photo', 'video', 'event', 'poll'].includes(initialModalType)) {
+        setModalType(initialModalType);
+      } else {
+        setModalType('post');
+      }
     }
-  }, [isVisible, modalType]);
+  }, [isVisible, initialModalType]);
+
+  // Fonction pour ouvrir directement un modal spécifique
+  const openSpecificModal = useCallback((type) => {
+    if (['photo', 'video', 'event', 'poll', 'post'].includes(type)) {
+      setModalType(type);
+    }
+  }, []);
 
   // Fonction pour obtenir le titre du modal
   const getModalTitle = () => {

@@ -89,6 +89,12 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   // Nouvelles variables d'état pour les commentaires
   const [newComment, setNewComment] = useState(null);
   const [commentsCount, setCommentsCount] = useState(0);
+  
+  // États pour la modification d'image
+  const [editImage, setEditImage] = useState(null);
+  const [editImagePreview, setEditImagePreview] = useState('');
+  const [isImageUploading, setIsImageUploading] = useState(false);
+  const [imageKey, setImageKey] = useState(0);
 
   // Validation checks after hooks
   if (!post) {
@@ -121,6 +127,9 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
       setLikesCount(postData.likes_count);
     }
     
+    // Réinitialiser l'état d'erreur d'image quand les données changent
+    setImageError(false);
+    
     // Récupérer l'état du like pour ce post
     const fetchLikeStatus = async () => {
       try {
@@ -147,23 +156,35 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
     
     fetchCommentsCount();
     fetchLikeStatus();
-  }, [postData?.content, postData?.comments_count, postData?.likes_count, postData?.id]);
+  }, [postData?.content, postData?.comments_count, postData?.likes_count, postData?.id, postData?.image_path]);
 
   const isAuthor = user?.id === postData.user_id;
   
   const handleEdit = () => {
     setIsEditing(true);
     setEditContent(postData.content);
+    setEditImage(null);
+    setEditImagePreview('');
+    setImageError(false);
   };
   
   const handleCancelEdit = () => {
     setIsEditing(false);
     setEditContent(postData.content);
+    setEditImage(null);
+    setEditImagePreview('');
     setError('');
+    setImageError(false);
+    
+    // Forcer un re-rendu pour s'assurer que l'image actuelle s'affiche correctement
+    setTimeout(() => {
+      setImageError(false);
+    }, 100);
   };
   
   const handleUpdate = async () => {
-    if (!editContent.trim()) {
+    if (!editContent.trim() && !editImage) {
+      setError('Veuillez ajouter du texte ou une image');
       return;
     }
     
@@ -171,11 +192,36 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
     setError('');
     
     try {
-      const response = await updatePost(postData.id, { content: editContent });
+      let response;
+      
+      if (editImage) {
+        // Si une nouvelle image est sélectionnée, utiliser FormData
+        const formData = new FormData();
+        formData.append('content', editContent);
+        formData.append('image', editImage);
+        formData.append('media_type', 'image');
+        
+        response = await updatePost(postData.id, formData);
+      } else {
+        // Sinon, envoyer seulement le texte
+        response = await updatePost(postData.id, { content: editContent });
+      }
+      
       setIsEditing(false);
+      setEditImage(null);
+      setEditImagePreview('');
+      
+      // Forcer la mise à jour de l'état local avec les nouvelles données
+      const updatedPost = response.data.post || response.data;
+      
+      // Mettre à jour les données du post localement
+      Object.assign(postData, updatedPost);
+      
+      // Réinitialiser les états d'erreur d'image et forcer le re-rendu
+      setImageError(false);
+      setImageKey(prev => prev + 1);
+      
       if (onPostUpdated) {
-        // Vérifier si la réponse contient une propriété 'post'
-        const updatedPost = response.data.post || response.data;
         onPostUpdated(updatedPost);
       }
     } catch (err) {
@@ -243,6 +289,35 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   const handleVideoError = () => {
     console.error('Erreur de chargement de vidéo:', postData.video_path);
     setVideoError(true);
+  };
+
+  // Fonctions pour la modification d'image
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validation du fichier
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const maxSize = 10 * 1024 * 1024; // 10MB
+
+      if (!allowedTypes.includes(file.type)) {
+        setError('Format d\'image non supporté. Utilisez JPG, PNG, GIF ou WebP.');
+        return;
+      }
+      if (file.size > maxSize) {
+        setError('L\'image est trop volumineuse. Taille maximale : 10MB.');
+        return;
+      }
+
+      setEditImage(file);
+      const objectUrl = URL.createObjectURL(file);
+      setEditImagePreview(objectUrl);
+      setError('');
+    }
+  };
+
+  const removeEditImage = () => {
+    setEditImage(null);
+    setEditImagePreview('');
   };
   
   // Fonction pour gérer la création d'un nouveau commentaire
@@ -467,20 +542,93 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
         {/* Contenu du post */}
         {isEditing ? (
           <div className="mt-4">
+            {/* Zone de texte */}
             <textarea
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
               rows="3"
+              placeholder="Modifiez votre post..."
             ></textarea>
             
+            {/* Section de gestion d'image */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-gray-700">Image du post</h4>
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
+                  <span className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    {postData.image_path ? 'Changer l\'image' : 'Ajouter une image'}
+                  </span>
+                </label>
+              </div>
+              
+              {/* Affichage de l'image actuelle */}
+              {postData.image_path && !editImagePreview && (
+                <div className="relative">
+                  <img 
+                    key={`edit-${postData.id}-${postData.image_path}-${imageKey}`}
+                    src={`http://192.168.1.4:8000/storage/${postData.image_path}`}
+                    alt="Image actuelle" 
+                    className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                  />
+                  <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                    Image actuelle
+                  </div>
+                </div>
+              )}
+              
+              {/* Prévisualisation de la nouvelle image */}
+              {editImagePreview && (
+                <div className="relative">
+                  <img 
+                    src={editImagePreview}
+                    alt="Nouvelle image" 
+                    className="w-full h-48 object-cover rounded-lg border border-blue-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeEditImage}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                    Nouvelle image
+                  </div>
+                </div>
+              )}
+              
+              {/* Zone de drop si aucune image */}
+              {!postData.image_path && !editImagePreview && (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                  <svg className="h-8 w-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-sm text-gray-500">
+                    Cliquez sur "Ajouter une image" pour sélectionner une image
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    JPG, PNG, GIF (Max. 10MB)
+                  </p>
+                </div>
+              )}
+            </div>
+            
             {error && (
-              <div className="text-sm text-red-600 mt-1">
+              <div className="text-sm text-red-600 mt-2 p-2 bg-red-50 rounded">
                 {error}
               </div>
             )}
             
-            <div className="mt-2 flex justify-end space-x-2">
+            <div className="flex justify-end space-x-2">
               <Button 
                 variant="outline" 
                 onClick={handleCancelEdit}
@@ -491,7 +639,7 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
               <Button 
                 variant="primary" 
                 onClick={handleUpdate}
-                disabled={loading || !editContent.trim()}
+                disabled={loading || (!editContent.trim() && !editImage)}
               >
                 {loading ? 'Mise à jour...' : 'Mettre à jour'}
               </Button>
@@ -508,6 +656,7 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
               <div className="mt-3">
                 <div className="rounded-lg overflow-hidden bg-gray-50">
                   <img 
+                    key={`${postData.id}-${postData.image_path}-${imageKey}`}
                     src={`http://192.168.1.4:8000/storage/${postData.image_path}`}
                     alt="Image du post" 
                     className="w-full h-auto object-cover max-h-96 cursor-pointer transition-all duration-300"
