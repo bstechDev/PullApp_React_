@@ -110,6 +110,11 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
     return null;
   }
 
+  // Ne pas afficher les posts en attente de modération sauf pour l'auteur
+  if (postData.status === 'pending' && user?.id !== postData.user_id) {
+    return null;
+  }
+
   // Déterminer si c'est un événement
   const isEvent = postData.type === 'event';
   const eventStatus = isEvent && postData.event_date ? getEventStatus(postData.event_date) : null;
@@ -430,11 +435,30 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
                 <p className="text-sm font-medium text-gray-900">
                   {postData.user?.first_name || 'Utilisateur'} {postData.user?.last_name || ''}
                 </p>
-                <p className="text-xs text-gray-500">
-                  {postData.created_at ? formatDate(postData.created_at) : 'Date inconnue'}
-                  {postData.created_at !== postData.updated_at && ' (modifié)'}
-                  {postData.privacy === 'private' && ' • Privé'}
-                </p>
+                <div>
+                  <p className="text-xs text-gray-500">
+                    {postData.created_at ? formatDate(postData.created_at) : 'Date inconnue'}
+                    {postData.created_at !== postData.updated_at && ' (modifié)'}
+                    {postData.privacy === 'private' && ' • Privé'}
+                  </p>
+                  {postData.status === 'pending' && (
+                    <p className="text-xs text-orange-500 mt-1 flex items-center">
+                      <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      En attente de modération
+                    </p>
+                  )}
+                  {postData.status === 'rejected' && (
+                    <p className="text-xs text-red-500 mt-1 flex items-center">
+                      <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Post rejeté
+                      {postData.rejection_reason && ` - ${postData.rejection_reason}`}
+                    </p>
+                  )}
+                </div>
               </div>
               
               {/* Menu options du post */}

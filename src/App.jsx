@@ -5,6 +5,7 @@ import AppRoutes from './routes';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { UserStatusProvider } from './contexts';
+import { AdminProvider } from './features/admin/contexts/AdminContext';
 import GlobalCallWatcher from './components/GlobalCallWatcher';
 import { usePusher } from './hooks/usePusher';
 import { useAuth } from './features/auth/contexts/AuthContext';
@@ -13,7 +14,9 @@ function App() {
   return (
     <AuthProvider>
       <UserStatusProvider>
-        <AppContent />
+        <AdminProvider>
+          <AppContent />
+        </AdminProvider>
       </UserStatusProvider>
     </AuthProvider>
   );

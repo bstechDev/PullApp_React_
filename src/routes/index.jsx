@@ -1,9 +1,11 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/contexts/AuthContext';
+import { useAdmin } from '../features/admin/contexts/AdminContext';
 
 // Layouts
 import AuthLayout from '../features/auth/components/layout/AuthLayout';
+import AdminLayout from '../features/admin/components/layout/AdminLayout';
 
 // Pages
 import LoginPage from '../features/auth/pages/auth/LoginPage';
@@ -20,7 +22,13 @@ import Notifications from '../features/auth/pages/Notifications';
 import Profile from '../features/auth/pages/Profile';
 import Settings from '../features/auth/pages/Settings';
 import Friends from '../features/auth/pages/Friends';
-import Calls from '../features/auth/pages/Calls'; 
+import Calls from '../features/auth/pages/Calls';
+
+// Pages Admin
+import AdminDashboard from '../features/admin/pages/AdminDashboard'; 
+import UsersManagement from '../features/admin/pages/UsersManagement';
+import ContentModeration from '../features/admin/pages/ContentModeration';
+import RelationsPage from '../features/admin/pages/RelationsPage';
 
 // Route protégée simplifiée
 const ProtectedRoute = ({ children }) => {
@@ -36,6 +44,30 @@ const ProtectedRoute = ({ children }) => {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
+// Route protégée Admin
+const AdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdmin();
+  
+  if (loading || adminLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -114,6 +146,24 @@ export default function AppRoutes() {
           <Route path="friends" element={<Friends />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
+        </Route>
+
+        {/* Routes Admin */}
+        <Route path="/admin" element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }>
+          {/* Route par défaut Admin */}
+          <Route index element={<AdminDashboard />} />
+          
+          {/* Sous-routes Admin */}
+          <Route path="users" element={<UsersManagement />} />
+          <Route path="moderation" element={<ContentModeration />} />
+          <Route path="relations" element={<RelationsPage />} />
+          <Route path="analytics" element={<div>Analytics</div>} />
+          <Route path="reports" element={<div>Rapports</div>} />
+          <Route path="settings" element={<div>Paramètres admin</div>} />
         </Route>
         
         {/* Redirection pour les routes inconnues */}

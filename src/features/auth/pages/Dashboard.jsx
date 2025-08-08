@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useAdmin } from '../../admin/contexts/AdminContext';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import UserStatusManager from '../components/UserStatusManager';
 import IncomingCallIndicator from '../../../components/IncomingCallIndicator';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
+  const { isAdmin } = useAdmin();
   const [userData, setUserData] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const location = useLocation();
@@ -186,6 +188,16 @@ const Dashboard = () => {
                       <Link to="/dashboard/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200">
                         Paramètres
                       </Link>
+                      {isAdmin && (
+                        <Link to="/admin" className="block px-4 py-2 text-sm text-purple-600 hover:bg-gray-50 transition-colors duration-200">
+                          <div className="flex items-center">
+                            <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Administration
+                          </div>
+                        </Link>
+                      )}
                       <button
                         onClick={handleLogout}
                         className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 transition-colors duration-200"
