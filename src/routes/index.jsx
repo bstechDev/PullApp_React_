@@ -29,6 +29,8 @@ import AdminDashboard from '../features/admin/pages/AdminDashboard';
 import UsersManagement from '../features/admin/pages/UsersManagement';
 import ContentModeration from '../features/admin/pages/ContentModeration';
 import RelationsPage from '../features/admin/pages/RelationsPage';
+import Analytics from '../features/admin/pages/Analytics';
+import SystemConfig from '../features/admin/pages/SystemConfig';
 
 // Route protégée simplifiée
 const ProtectedRoute = ({ children }) => {
@@ -158,12 +160,13 @@ export default function AppRoutes() {
           <Route index element={<AdminDashboard />} />
           
           {/* Sous-routes Admin */}
-          <Route path="users" element={<UsersManagement />} />
-          <Route path="moderation" element={<ContentModeration />} />
+          <Route path="auth" element={<div>Gestion de l'authentification</div>} />
+          <Route path="user" element={<UsersManagement />} />
+          <Route path="post" element={<ContentModeration />} />
           <Route path="relations" element={<RelationsPage />} />
-          <Route path="analytics" element={<div>Analytics</div>} />
-          <Route path="reports" element={<div>Rapports</div>} />
-          <Route path="settings" element={<div>Paramètres admin</div>} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="config" element={<SystemConfig />} />
+          <Route path="roles" element={<div>Gestion des rôles et permissions</div>} />
         </Route>
         
         {/* Redirection pour les routes inconnues */}

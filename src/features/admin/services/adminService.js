@@ -121,10 +121,20 @@ export const adminService = {
     return response.data;
   },
 
-  resolveReport: async (reportId, action) => {
+  // Nouveau: traiter un signalement (resolve, dismiss, escalate)
+  processReport: async (reportId, action, adminNote = "") => {
     const response = await api.post(
-      `/admin/moderation/reports/${reportId}/resolve`,
-      { action }
+      `/admin/moderation/reports/${reportId}/process`,
+      { action, admin_note: adminNote }
+    );
+    return response.data;
+  },
+
+  // Compatibilité éventuelle (alias vers processReport)
+  resolveReport: async (reportId, action, adminNote = "") => {
+    const response = await api.post(
+      `/admin/moderation/reports/${reportId}/process`,
+      { action, admin_note: adminNote }
     );
     return response.data;
   },
@@ -132,6 +142,12 @@ export const adminService = {
   // ===== STATISTIQUES DE MODÉRATION =====
   getModerationStats: async () => {
     const response = await api.get("/admin/moderation/stats");
+    return response.data;
+  },
+
+  // Nouveau: Dashboard de modération
+  getModerationDashboard: async () => {
+    const response = await api.get("/admin/moderation/dashboard");
     return response.data;
   },
 
@@ -190,6 +206,166 @@ export const adminService = {
 
   performMassActions: async (actions) => {
     const response = await api.post("/admin/relations/mass-actions", actions);
+    return response.data;
+  },
+
+  // ===== ANALYTICS =====
+  getAnalyticsDashboard: async () => {
+    const response = await api.get("/admin/analytics/dashboard");
+    return response.data;
+  },
+
+  getUserEvolution: async (period = 30) => {
+    const response = await api.get(
+      `/admin/analytics/user-evolution?period=${period}`
+    );
+    return response.data;
+  },
+
+  getActivityCharts: async (period = 7) => {
+    const response = await api.get(
+      `/admin/analytics/activity-charts?period=${period}`
+    );
+    return response.data;
+  },
+
+  getDemographics: async () => {
+    const response = await api.get("/admin/analytics/demographics");
+    return response.data;
+  },
+
+  getContentStats: async () => {
+    const response = await api.get("/admin/analytics/content-stats");
+    return response.data;
+  },
+
+  getAnalyticsModerationStats: async () => {
+    const response = await api.get("/admin/analytics/moderation-stats");
+    return response.data;
+  },
+
+  exportAnalyticsData: async (exportParams = {}) => {
+    const response = await api.post("/admin/analytics/export", exportParams);
+    return response.data;
+  },
+
+  getPeriodicReports: async (period = "weekly", date = null) => {
+    const params = { period };
+    if (date) params.date = date;
+    const response = await api.get("/admin/analytics/periodic-reports", {
+      params,
+    });
+    return response.data;
+  },
+
+  getPerformanceMetrics: async () => {
+    const response = await api.get("/admin/analytics/performance-metrics");
+    return response.data;
+  },
+
+  // ===== CONFIGURATION SYSTÈME =====
+
+  // Dashboard système
+  getSystemDashboard: async () => {
+    const response = await api.get("/admin/system/dashboard");
+    return response.data;
+  },
+
+  // Paramètres système
+  getSystemSettings: async () => {
+    const response = await api.get("/admin/system/settings");
+    return response.data;
+  },
+
+  updateSystemSettings: async (settings) => {
+    const response = await api.post("/admin/system/settings", { settings });
+    return response.data;
+  },
+
+  // Mode maintenance
+  getMaintenanceStatus: async () => {
+    const response = await api.post("/admin/system/maintenance", {
+      action: "status",
+    });
+    return response.data;
+  },
+
+  enableMaintenanceMode: async (maintenanceData) => {
+    const response = await api.post("/admin/system/maintenance", {
+      action: "enable",
+      ...maintenanceData,
+    });
+    return response.data;
+  },
+
+  disableMaintenanceMode: async () => {
+    const response = await api.post("/admin/system/maintenance", {
+      action: "disable",
+    });
+    return response.data;
+  },
+
+  // Notifications globales
+  createGlobalNotification: async (notificationData) => {
+    const response = await api.post("/admin/system/notifications", {
+      action: "create",
+      ...notificationData,
+    });
+    return response.data;
+  },
+
+  listGlobalNotifications: async () => {
+    const response = await api.post("/admin/system/notifications", {
+      action: "list",
+    });
+    return response.data;
+  },
+
+  updateGlobalNotification: async (notificationData) => {
+    const response = await api.post("/admin/system/notifications", {
+      action: "update",
+      ...notificationData,
+    });
+    return response.data;
+  },
+
+  deleteGlobalNotification: async (notificationId) => {
+    const response = await api.post("/admin/system/notifications", {
+      action: "delete",
+      id: notificationId,
+    });
+    return response.data;
+  },
+
+  // Sauvegardes
+  createBackup: async (backupData) => {
+    const response = await api.post("/admin/system/backups", {
+      action: "create",
+      ...backupData,
+    });
+    return response.data;
+  },
+
+  listBackups: async () => {
+    const response = await api.post("/admin/system/backups", {
+      action: "list",
+    });
+    return response.data;
+  },
+
+  downloadBackup: async (backupId) => {
+    const response = await api.post("/admin/system/backups", {
+      action: "download",
+      id: backupId,
+    });
+    return response.data;
+  },
+
+  deleteBackup: async (backupId) => {
+    const response = await api.post("/admin/system/backups", {
+      action: "delete",
+      id: backupId,
+    });
     return response.data;
   },
 };

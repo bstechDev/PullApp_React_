@@ -15,6 +15,7 @@ const ContentModeration = () => {
   const [activeTab, setActiveTab] = useState('posts');
   const [posts, setPosts] = useState([]);
   const [comments, setComments] = useState([]);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -81,6 +82,12 @@ const ContentModeration = () => {
           setComments(response.comments.data);
           setTotalPages(response.comments.last_page);
         }
+      } else if (activeTab === 'reports') {
+        response = await adminService.getReports(apiParams);
+        if (response.success) {
+          setReports(response.reports.data || []);
+          setTotalPages(response.reports.last_page || 1);
+        }
       }
     } catch (error) {
       toast.error('Erreur lors du chargement du contenu');
@@ -123,6 +130,17 @@ const ContentModeration = () => {
     setShowModal(true);
   };
 
+  // Actions sur un signalement
+  const handleReportAction = async (action, report) => {
+    setModalConfig({
+      action,
+      contentType: 'report',
+      contentId: report.id,
+      contentPreview: report?.reason || report?.description || ''
+    });
+    setShowModal(true);
+  };
+
   const handleModalConfirm = async (contentId, action, reason) => {
     try {
       if (action === 'delete') {
@@ -141,10 +159,18 @@ const ContentModeration = () => {
           } else {
             throw new Error(response.message || 'Une erreur est survenue');
           }
-        } else {
+        } else if (modalConfig.contentType === 'post') {
           const response = await adminService.moderatePost(contentId, action, reason);
           if (response.success) {
             toast.success(response.message || `Post ${action === 'approve' ? 'approuvé' : 'rejeté'} avec succès`);
+          } else {
+            throw new Error(response.message || 'Une erreur est survenue');
+          }
+        } else if (modalConfig.contentType === 'report') {
+          // action peut être: resolve | dismiss | escalate
+          const response = await adminService.processReport(contentId, action, reason || '');
+          if (response.success) {
+            toast.success(response.message || `Signalement ${action} avec succès`);
           } else {
             throw new Error(response.message || 'Une erreur est survenue');
           }
@@ -234,6 +260,19 @@ const ContentModeration = () => {
                 {comments.length}
               </span>
             </button>
+            <button
+              onClick={() => setActiveTab('reports')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'reports'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Signalements
+              <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2.5 rounded-full text-xs">
+                {reports.length}
+              </span>
+            </button>
           </nav>
         </div>
 
@@ -273,7 +312,7 @@ const ContentModeration = () => {
               ))}
             </div>
           )
-        ) : (
+        ) : activeTab === 'comments' ? (
           // Liste des commentaires en grille
           comments.length === 0 ? (
             <div className="bg-white shadow rounded-lg p-8 text-center">
@@ -293,6 +332,38 @@ const ContentModeration = () => {
                   comment={comment}
                   onAction={handleCommentAction}
                 />
+              ))}
+            </div>
+          )
+        ) : (
+          // Liste des signalements
+          reports.length === 0 ? (
+            <div className="bg-white shadow rounded-lg p-8 text-center">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun signalement</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Il n'y a actuellement aucun signalement à traiter.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {reports.map(report => (
+                <div key={report.id} className="bg-white shadow rounded-lg p-4">
+                  <div className="mb-2">
+                    <p className="text-sm text-gray-700"><strong>Type:</strong> {report.type || 'post'}</p>
+                    <p className="text-sm text-gray-700"><strong>Raison:</strong> {report.reason || report.description}</p>
+                    {report.post?.content && (
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-3">{report.post.content}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 justify-end mt-3">
+                    <button onClick={() => handleReportAction('resolve', report)} className="px-3 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700">Résoudre</button>
+                    <button onClick={() => handleReportAction('dismiss', report)} className="px-3 py-1 text-xs rounded bg-gray-600 text-white hover:bg-gray-700">Ignorer</button>
+                    <button onClick={() => handleReportAction('escalate', report)} className="px-3 py-1 text-xs rounded bg-orange-600 text-white hover:bg-orange-700">Escalader</button>
+                  </div>
+                </div>
               ))}
             </div>
           )
