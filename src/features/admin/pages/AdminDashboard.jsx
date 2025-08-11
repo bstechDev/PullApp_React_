@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useAdmin } from '../contexts/AdminContext';
 import { adminService } from '../services/adminService';
 import { toast } from 'react-toastify';
 
 const AdminDashboard = () => {
-  const { loadAdminStats, adminStats } = useAdmin();
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState([]);
   const [stats, setStats] = useState({
@@ -146,7 +144,7 @@ const AdminDashboard = () => {
         { id: 2, type: 'post_reported', message: 'Post signalé par 3 utilisateurs', time: '5 minutes', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z' },
         { id: 3, type: 'user_banned', message: 'Utilisateur banni: spam détecté', time: '10 minutes', icon: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728' },
       ]);
-    } catch (error) {
+    } catch {
       toast.error('Erreur lors du chargement du dashboard');
     } finally {
       setLoading(false);

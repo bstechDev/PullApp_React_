@@ -31,6 +31,7 @@ import ContentModeration from '../features/admin/pages/ContentModeration';
 import RelationsPage from '../features/admin/pages/RelationsPage';
 import Analytics from '../features/admin/pages/Analytics';
 import SystemConfig from '../features/admin/pages/SystemConfig';
+import RolesPermissions from '../features/admin/pages/RolesPermissions';
 
 // Route protégée simplifiée
 const ProtectedRoute = ({ children }) => {
@@ -166,7 +167,7 @@ export default function AppRoutes() {
           <Route path="relations" element={<RelationsPage />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="config" element={<SystemConfig />} />
-          <Route path="roles" element={<div>Gestion des rôles et permissions</div>} />
+          <Route path="roles" element={<RolesPermissions />} />
         </Route>
         
         {/* Redirection pour les routes inconnues */}

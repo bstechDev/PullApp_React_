@@ -368,4 +368,98 @@ export const adminService = {
     });
     return response.data;
   },
+
+  // ===== GESTION DES RÔLES ET PERMISSIONS =====
+
+  // Dashboard des rôles
+  getRolesDashboard: async () => {
+    const response = await api.get("/admin/roles/dashboard");
+    return response.data;
+  },
+
+  // Gestion des rôles
+  getAllRoles: async (params = {}) => {
+    const response = await api.get("/admin/roles", { params });
+    return response.data;
+  },
+
+  getRoleById: async (roleId) => {
+    const response = await api.get(`/admin/roles/${roleId}`);
+    return response.data;
+  },
+
+  createRole: async (roleData) => {
+    const response = await api.post("/admin/roles", roleData);
+    return response.data;
+  },
+
+  updateRole: async (roleId, roleData) => {
+    const response = await api.put(`/admin/roles/${roleId}`, roleData);
+    return response.data;
+  },
+
+  deleteRole: async (roleId) => {
+    const response = await api.delete(`/admin/roles/${roleId}`);
+    return response.data;
+  },
+
+  // Gestion des permissions des rôles
+  grantRolePermissions: async (roleId, permissions) => {
+    const response = await api.post(`/admin/roles/${roleId}/permissions`, {
+      action: "grant",
+      permissions: permissions,
+    });
+    return response.data;
+  },
+
+  revokeRolePermissions: async (roleId, permissions) => {
+    const response = await api.post(`/admin/roles/${roleId}/permissions`, {
+      action: "revoke",
+      permissions: permissions,
+    });
+    return response.data;
+  },
+
+  // Gestion des permissions
+  getAllPermissions: async (params = {}) => {
+    const response = await api.get("/admin/roles/permissions/list", { params });
+    return response.data;
+  },
+
+  createPermission: async (permissionData) => {
+    const response = await api.post(
+      "/admin/roles/permissions/create",
+      permissionData
+    );
+    return response.data;
+  },
+
+  // Gestion des rôles utilisateurs
+  assignUserRoles: async (userId, roles, customPermissions = []) => {
+    const response = await api.post(`/admin/roles/users/${userId}/roles`, {
+      action: "assign",
+      roles: roles,
+      custom_permissions: customPermissions,
+    });
+    return response.data;
+  },
+
+  removeUserRoles: async (userId, roles) => {
+    const response = await api.post(`/admin/roles/users/${userId}/roles`, {
+      action: "remove",
+      roles: roles,
+    });
+    return response.data;
+  },
+
+  getUserPermissions: async (userId) => {
+    const response = await api.get(`/admin/roles/users/${userId}/permissions`);
+    return response.data;
+  },
+
+  // Statistiques des rôles et permissions
+  getRolesStatistics: async () => {
+    const response = await api.get("/admin/roles/statistics/overview");
+    return response.data;
+  },
 };
